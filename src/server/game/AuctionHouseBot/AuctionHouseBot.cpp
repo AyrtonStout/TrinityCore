@@ -294,6 +294,16 @@ void AuctionBotConfig::GetConfigFromFile()
     SetConfig(CONFIG_AHBOT_CLASS_RANDOMSTACKRATIO_MISC, "AuctionHouseBot.Class.RandomStackRatio.Misc", 100);
     SetConfig(CONFIG_AHBOT_CLASS_RANDOMSTACKRATIO_GLYPH, "AuctionHouseBot.Class.RandomStackRatio.Glyph", 0);
 
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_200, "AuctionHouseBot.ItemLevel.200", 1.5f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_213, "AuctionHouseBot.ItemLevel.213", 2.2f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_219, "AuctionHouseBot.ItemLevel.219", 2.6f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_226, "AuctionHouseBot.ItemLevel.226", 4.0f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_232, "AuctionHouseBot.ItemLevel.232", 5.5f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_245, "AuctionHouseBot.ItemLevel.245", 8.0f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_251, "AuctionHouseBot.ItemLevel.251", 11.0f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_258, "AuctionHouseBot.ItemLevel.258", 15.0f);
+	SetConfig(CONFIG_AHBOT_ITEMLEVEL_264, "AuctionHouseBot.ItemLevel.264", 23.0f);
+
     SetConfig(CONFIG_AHBOT_BIDPRICE_MIN, "AuctionHouseBot.BidPrice.Min", 0.1f);
     SetConfig(CONFIG_AHBOT_BIDPRICE_MAX, "AuctionHouseBot.BidPrice.Max", 0.9f);
 }

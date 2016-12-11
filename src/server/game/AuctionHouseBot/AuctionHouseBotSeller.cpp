@@ -727,6 +727,27 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
         buyPrice = sellPrice;
 
     float basePriceFloat = (buyPrice * stackCount * priceRatio) / (itemProto->Class == 6 ? 200.0f : static_cast<float>(itemProto->BuyCount)) / 100.0f;
+
+    uint32 itemLevel = itemProto->ItemLevel;
+    if (itemLevel >= 264) 
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_264);
+    else if (itemLevel >= 258) 
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_258);
+    else if (itemLevel >= 251)
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_251);
+    else if (itemLevel >= 245)
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_245);
+    else if (itemLevel >= 232)
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_232);
+    else if (itemLevel >= 226)
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_226);
+    else if (itemLevel >= 219)
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_219);
+    else if (itemLevel >= 213)
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_213);
+    else if (itemLevel >= 200)
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_200);
+   
     float range = basePriceFloat * 0.04f;
 
     buyp = static_cast<uint32>(frand(basePriceFloat - range, basePriceFloat + range) + 0.5f);
