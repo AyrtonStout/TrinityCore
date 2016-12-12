@@ -34,8 +34,6 @@ AuctionBotSeller::~AuctionBotSeller()
 
 bool AuctionBotSeller::Initialize()
 {
-    std::vector<uint32> npcItems;
-    std::vector<uint32> lootItems;
     std::vector<uint32> includeItems;
     std::vector<uint32> excludeItems;
 
@@ -244,18 +242,7 @@ bool AuctionBotSeller::Initialize()
         // not vendor/loot filter
         if (!sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMS_MISC))
         {
-            bool isVendorItem = false;
-            bool isLootItem = false;
-
-            for (size_t i = 0; i < npcItems.size() && !isVendorItem; ++i)
-                if (itemId == npcItems[i])
-                    isVendorItem = true;
-
-            for (size_t i = 0; i < lootItems.size() && !isLootItem; ++i)
-                if (itemId == lootItems[i])
-                    isLootItem = true;
-
-            if (!isLootItem && !isVendorItem)
+            if (IsMiscItem(itemId))
                 continue;
         }
 
@@ -696,6 +683,22 @@ bool AuctionBotSeller::GetItemsToSell(SellerConfiguration& config, ItemsToSellAr
     return found;
 }
 
+bool AuctionBotSeller::IsMiscItem(uint32 itemId)
+{
+    bool isVendorItem = false;
+    bool isLootItem = false;
+
+    for (size_t i = 0; i < npcItems.size() && !isVendorItem; ++i)
+        if (itemId == npcItems[i])
+            isVendorItem = true;
+
+    for (size_t i = 0; i < lootItems.size() && !isLootItem; ++i)
+        if (itemId == lootItems[i])
+            isLootItem = true;
+
+    return (!isLootItem && !isVendorItem);
+}
+
 // Set items price. All important value are passed by address.
 void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConfiguration& config, uint32& buyp, uint32& bidp, uint32 stackCount)
 {
@@ -748,6 +751,11 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
     else if (itemLevel >= 200)
         basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMLEVEL_200);
    
+    if (sAuctionBotConfig->GetConfig(CONFIG_AHBOT_ITEMS_MISC) && IsMiscItem(itemProto->ItemId))
+    {
+        basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_MISCITEM_PRICE);
+    }
+
     float range = basePriceFloat * 0.04f;
 
     buyp = static_cast<uint32>(frand(basePriceFloat - range, basePriceFloat + range) + 0.5f);

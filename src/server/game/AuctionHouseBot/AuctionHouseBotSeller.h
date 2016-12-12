@@ -138,6 +138,9 @@ private:
 
     ItemPool _itemPool[MAX_AUCTION_QUALITY][MAX_ITEM_CLASS];
 
+    std::vector<uint32> npcItems;
+    std::vector<uint32> lootItems;
+
     void LoadSellerValues(SellerConfiguration& config);
     uint32 SetStat(SellerConfiguration& config);
     bool GetItemsToSell(SellerConfiguration& config, ItemsToSellArray& itemsToSellArray, AllItemsArray const& addedItem);
@@ -146,6 +149,7 @@ private:
     void LoadItemsQuantity(SellerConfiguration& config);
     static uint32 GetBuyModifier(ItemTemplate const* prototype);
     static uint32 GetSellModifier(ItemTemplate const* itemProto);
+    bool IsMiscItem(uint32 itemId);
 };
 
 #endif
