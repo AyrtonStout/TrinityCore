@@ -758,6 +758,10 @@ void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recvData)
 
 void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
 {
+#include <string>
+    TC_LOG_INFO("server", "CharacterHandler.cpp Player Login Thing");
+    TC_LOG_INFO("server", std::to_string(holder->GetAccountId()));
+    TC_LOG_INFO("server", std::to_string(holder->GetGuid()));
     ObjectGuid playerGuid = holder->GetGuid();
 
     Player* pCurrChar = new Player(this);
@@ -778,6 +782,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     pCurrChar->GetMotionMaster()->Initialize();
     pCurrChar->SendDungeonDifficulty(false);
 
+    TC_LOG_INFO("server", "CharacterHandler.cpp Gathering Position Data");
     WorldPacket data(SMSG_LOGIN_VERIFY_WORLD, 20);
     data << pCurrChar->GetMapId();
     data << pCurrChar->GetPositionX();
@@ -785,10 +790,12 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     data << pCurrChar->GetPositionZ();
     data << pCurrChar->GetOrientation();
     SendPacket(&data);
+    TC_LOG_INFO("server", "CharacterHandler.cpp Sent Positional Data");
 
     // load player specific part before send times
     LoadAccountData(holder->GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_DATA), PER_CHARACTER_CACHE_MASK);
     SendAccountDataTimes(PER_CHARACTER_CACHE_MASK);
+    TC_LOG_INFO("server", "CharacterHandler.cpp Sent Account Data");
 
     data.Initialize(SMSG_FEATURE_SYSTEM_STATUS, 2);         // added in 2.2.0
     data << uint8(2);                                       // unknown value
@@ -999,6 +1006,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
 
     TC_METRIC_EVENT("player_events", "Login", pCurrChar->GetName());
 
+    TC_LOG_INFO("server", "CharacterHandler.cpp Finished Login Handler");
     delete holder;
 }
 
