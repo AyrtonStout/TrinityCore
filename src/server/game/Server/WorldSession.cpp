@@ -270,7 +270,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
 
     ///- Before we process anything:
     /// If necessary, kick the player from the character select screen
-    if (IsConnectionIdle())
+    if (!m_isPlayerBot && IsConnectionIdle())
         m_Socket->CloseSocket();
 
     ///- Retrieve packets from the receive queue and call the appropriate handlers
@@ -282,7 +282,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     uint32 processedPackets = 0;
     time_t currentTime = time(NULL);
 
-    while (m_Socket && _recvQueue.next(packet, updater))
+    while (!m_isPlayerBot && m_Socket && _recvQueue.next(packet, updater))
     {
         ClientOpcodeHandler const* opHandle = opcodeTable[static_cast<OpcodeClient>(packet->GetOpcode())];
         try
@@ -422,7 +422,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
             }
         }
 
-        if (!m_Socket)
+        if (!m_isPlayerBot && !m_Socket)
             return false;                                       //Will remove this session from the world session map
     }
 
@@ -1116,7 +1116,6 @@ void WorldSession::ProcessQueryCallbacks()
     //! HandlePlayerLoginOpcode
     if (_charLoginCallback.valid() && _charLoginCallback.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
     {
-        TC_LOG_INFO("server", "WorldSession.cpp Player Login Thing");
         SQLQueryHolder* param = _charLoginCallback.get();
         HandlePlayerLogin((LoginQueryHolder*)param);
     }

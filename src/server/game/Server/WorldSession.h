@@ -451,6 +451,7 @@ class TC_GAME_API WorldSession
         void HandleCharCreateOpcode(WorldPacket& recvPacket);
         void HandleCharCreateCallback(PreparedQueryResult result, CharacterCreateInfo* createInfo);
         void HandlePlayerLoginOpcode(WorldPacket& recvPacket);
+        void LoginBot(uint64 playerId);
         void HandleCharEnum(PreparedQueryResult result);
         void HandlePlayerLogin(LoginQueryHolder * holder);
         void HandleCharFactionOrRaceChange(WorldPacket& recvData);
