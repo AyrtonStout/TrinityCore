@@ -53,7 +53,7 @@ void ThingsAreAHappenin()
     WorldSession *sesh = new WorldSession(accountId, accountName.c_str(), NULL, accountType, expansion, muteTime, locale, recruiter, isARecruiter, isPlayerBot);
     sWorld->AddSession(sesh);
 
-    sesh->HandleBotLogin(playerId);
+    sesh->LoginBot(playerId);
 
 }
 
