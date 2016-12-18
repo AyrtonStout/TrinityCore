@@ -3224,6 +3224,13 @@ AuctionHouseBot.ItemsPerCycle.Normal = 20
 AuctionHouseBot.BuyPrice.Seller = 1
 
 #
+#    AuctionHouseBot.BuyPrice.Variance
+#       Description: The randomness involved in calculating the final BuyPrice for an item
+#       Default:     0.04
+
+AuctionHouseBot.BuyPrice.Variance = 0.04
+
+#
 #    AuctionHouseBot.BidPrice.*
 #       Description: These values determine the range that the Bid Price will fall into, as a percentage of the Buy Price
 #       Default:     0.1 - (Min)

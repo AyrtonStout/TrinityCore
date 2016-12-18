@@ -756,7 +756,7 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
         basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_MISCITEM_PRICE);
     }
 
-    float range = basePriceFloat * 0.04f;
+    float range = basePriceFloat * sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BUYPRICE_VARIANCE);
 
     buyp = static_cast<uint32>(frand(basePriceFloat - range, basePriceFloat + range) + 0.5f);
     if (buyp == 0)

@@ -307,6 +307,8 @@ void AuctionBotConfig::GetConfigFromFile()
     SetConfig(CONFIG_AHBOT_BIDPRICE_MIN, "AuctionHouseBot.BidPrice.Min", 0.1f);
     SetConfig(CONFIG_AHBOT_BIDPRICE_MAX, "AuctionHouseBot.BidPrice.Max", 0.9f);
 
+    SetConfig(CONFIG_AHBOT_BUYPRICE_VARIANCE, "AuctionHouseBot.BuyPrice.Variance", 0.04f);
+
     SetConfig(CONFIG_AHBOT_MISCITEM_PRICE, "AuctionHouseBot.Items.Misc.Price", 1.0f);
 }
 
