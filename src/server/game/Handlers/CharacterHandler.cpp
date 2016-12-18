@@ -724,6 +724,27 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recvData)
     SendCharDelete(CHAR_DELETE_SUCCESS);
 }
 
+void WorldSession::LoginBot(uint64 playerId)
+{
+    ObjectGuid *playerGuid = new ObjectGuid(playerId);
+    ObjectGuid::LowType lowGuid = playerGuid->GetCounter();
+
+    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER);
+    stmt->setUInt32(0, lowGuid);
+    m_playerLoading = true;
+
+    LoginQueryHolder *holder = new LoginQueryHolder(GetAccountId(), *playerGuid);
+    if (!holder->Initialize())
+    {
+        TC_LOG_ERROR("server", "Query Holder did not initialize for bot with ID " + playerId);
+        delete holder;
+        m_playerLoading = false;
+        return;
+    }
+
+    _charLoginCallback = CharacterDatabase.DelayQueryHolder(holder);
+}
+
 void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recvData)
 {
     if (PlayerLoading() || GetPlayer() != NULL)
