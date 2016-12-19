@@ -1,9 +1,10 @@
+#ifndef __PLAYERBOTMANAGER_H
+#define __PLAYERBOTMANAGER_H
+
 #include "Common.h"
 #include "Log.h"
 #include "WorldSession.h"
 #include "QueryHolder.h"
-//#include "WorldSession.h"
-//#include "WorldSession.cpp"
 
 class TC_GAME_API PlayerBotManager
 {
@@ -16,3 +17,5 @@ public:
 };
 
 #define sPlayerBotManager PlayerBotManager::instance()
+
+#endif
