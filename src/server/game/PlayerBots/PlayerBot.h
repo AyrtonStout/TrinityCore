@@ -12,7 +12,11 @@ public:
     ~PlayerBot();
 
     void Login();
-    void SendChat();
+    void SendChat(ChatMsg chatType, std::string chatMessage);
+    void SendChatWithTarget(ChatMsg chatType, std::string chatMessage, std::string target);
+    void SendChannelMessage(std::string channel, std::string zone, std::string message);
+    void SetAFK(std::string afkMessage = "");
+    void SetDND(std::string dndMessage = "");
 
 private:
     uint64 m_playerGuid;

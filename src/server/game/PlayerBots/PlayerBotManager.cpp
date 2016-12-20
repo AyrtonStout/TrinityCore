@@ -35,8 +35,16 @@ void ThingsAreAHappenin()
 
     while (true)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(10));
-        harry->SendChat();
+        std::this_thread::sleep_for(std::chrono::seconds(7));
+        harry->SendChat(CHAT_MSG_SAY, "Hey girl. -Sent from my iBot");
+        std::this_thread::sleep_for(std::chrono::seconds(7));
+        harry->SetAFK();
+        std::this_thread::sleep_for(std::chrono::seconds(7));
+        harry->SendChatWithTarget(CHAT_MSG_WHISPER, "Whoa oa oa oaoooo", "Cassinia");
+        std::this_thread::sleep_for(std::chrono::seconds(7));
+        harry->SetDND();
+        std::this_thread::sleep_for(std::chrono::seconds(7));
+        harry->SetAFK("I'm afk nub");
     }
 }
 

@@ -256,6 +256,8 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
         }
         case CHAT_MSG_EMOTE:
         {
+            TC_LOG_INFO("server", "Emoting");
+            TC_LOG_INFO("server", msg);
             // Prevent cheating
             if (!sender->IsAlive())
                 return;
@@ -453,6 +455,9 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
         }
         case CHAT_MSG_CHANNEL:
         {
+            TC_LOG_INFO("server", "Channeling");
+            TC_LOG_INFO("server", channel);
+            TC_LOG_INFO("server", msg);
             if (!HasPermission(rbac::RBAC_PERM_SKIP_CHECK_CHAT_CHANNEL_REQ))
             {
                 if (sender->getLevel() < sWorld->getIntConfig(CONFIG_CHAT_CHANNEL_LEVEL_REQ))

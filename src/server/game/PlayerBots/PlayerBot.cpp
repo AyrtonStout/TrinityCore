@@ -26,11 +26,60 @@ void PlayerBot::Login()
     m_session->LoginBot(m_playerGuid);
 }
 
-void PlayerBot::SendChat()
+/*
+ * Sending an emote in this way like "/dance" will not register as a dance. This is for custom emotes.
+ */
+void PlayerBot::SendChat(ChatMsg chatType, std::string chatMessage)
 {
+    TC_LOG_INFO("server", "Chat was sent");
     WorldPacket *packet = new WorldPacket();
-    *packet << (uint32) CHAT_MSG_SAY;
+    *packet << (uint32) chatType;
     *packet << (uint32) LANG_COMMON;
-    *packet << "Hey whats up";
+    *packet << chatMessage;
+    m_session->HandleMessagechatOpcode(*packet);
+}
+
+void PlayerBot::SendChatWithTarget(ChatMsg chatType, std::string chatMessage, std::string target)
+{
+    TC_LOG_INFO("server", "Target chat was sent");
+    WorldPacket *packet = new WorldPacket();
+    *packet << (uint32) chatType;
+    *packet << (uint32) LANG_COMMON;
+    *packet << target;
+    *packet << chatMessage;
+    m_session->HandleMessagechatOpcode(*packet);
+}
+
+/*
+ * Channel is a string like "General", "LocalDefense", 
+ * Zone is a string like "Elwynn Forest", 
+ */
+void PlayerBot::SendChannelMessage(std::string channel, std::string zone, std::string message)
+{
+    TC_LOG_INFO("server", "Channel was sent");
+    WorldPacket *packet = new WorldPacket();
+    *packet << (uint32) CHAT_MSG_CHANNEL;
+    *packet << (uint32) LANG_UNIVERSAL;
+    *packet << channel + " - " + zone;
+    m_session->HandleMessagechatOpcode(*packet);
+}
+
+void PlayerBot::SetAFK(std::string afkMessage)
+{
+    TC_LOG_INFO("server", "AFK was sent");
+    WorldPacket *packet = new WorldPacket();
+    *packet << (uint32) CHAT_MSG_AFK;
+    *packet << (uint32) LANG_UNIVERSAL;
+    *packet << afkMessage;
+    m_session->HandleMessagechatOpcode(*packet);
+}
+
+void PlayerBot::SetDND(std::string afkMessage)
+{
+    TC_LOG_INFO("server", "DND was sent");
+    WorldPacket *packet = new WorldPacket();
+    *packet << (uint32) CHAT_MSG_DND;
+    *packet << (uint32) LANG_UNIVERSAL;
+    *packet << afkMessage;
     m_session->HandleMessagechatOpcode(*packet);
 }
