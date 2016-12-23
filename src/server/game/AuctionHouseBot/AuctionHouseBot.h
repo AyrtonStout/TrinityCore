@@ -193,7 +193,6 @@ enum AuctionBotConfigBoolValues
 enum AuctionBotConfigFloatValues
 {
     CONFIG_AHBOT_BUYER_CHANCE_FACTOR,
-    CONFIG_AHBOT_FLOAT_COUNT,
     CONFIG_AHBOT_BIDPRICE_MIN,
     CONFIG_AHBOT_BIDPRICE_MAX,
     CONFIG_AHBOT_MISCITEM_PRICE,
@@ -206,7 +205,8 @@ enum AuctionBotConfigFloatValues
     CONFIG_AHBOT_ITEMLEVEL_245,
     CONFIG_AHBOT_ITEMLEVEL_251,
     CONFIG_AHBOT_ITEMLEVEL_258,
-    CONFIG_AHBOT_ITEMLEVEL_264
+    CONFIG_AHBOT_ITEMLEVEL_264,
+    CONFIG_AHBOT_FLOAT_COUNT
 };
 
 // All basic config data used by other AHBot classes for self-configure.
