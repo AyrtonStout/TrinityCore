@@ -37,6 +37,8 @@ bool AuctionBotSeller::Initialize()
     std::vector<uint32> includeItems;
     std::vector<uint32> excludeItems;
 
+    _randGenerator.seed(time(0));
+
     TC_LOG_DEBUG("ahbot", "AHBot seller filters:");
 
     {
@@ -762,8 +764,12 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
     if (buyp == 0)
         buyp = 1;
 
-    float bidPercentage = frand(sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MIN), sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MAX));
-    bidp = static_cast<uint32>(bidPercentage * buyp);
+    float distributionMean = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MEAN);
+    float distributionSigma = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_SIGMA);
+    std::normal_distribution<double> distribution(distributionMean, distributionSigma);
+
+    double priceVariance = distribution(_randGenerator);
+    bidp = static_cast<uint32>(priceVariance * buyp);
     if (bidp == 0)
         bidp = 1;
 }

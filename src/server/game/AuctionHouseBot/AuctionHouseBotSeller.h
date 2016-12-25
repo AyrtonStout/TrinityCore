@@ -137,6 +137,7 @@ private:
     SellerConfiguration _houseConfig[MAX_AUCTION_HOUSE_TYPE];
 
     ItemPool _itemPool[MAX_AUCTION_QUALITY][MAX_ITEM_CLASS];
+    std::default_random_engine _randGenerator;
 
     std::vector<uint32> npcItems;
     std::vector<uint32> lootItems;
