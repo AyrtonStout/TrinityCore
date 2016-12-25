@@ -21,9 +21,12 @@ PlayerBot::~PlayerBot()
 
 void PlayerBot::Login()
 {
-    TC_LOG_INFO("server", "Hello World");
-
-    m_session->LoginBot(m_playerGuid);
+    m_session->LoginBot(m_playerGuid); //This is asynchronous, and needs to be waited for
+    while (!m_session->GetPlayer() || m_session->GetPlayer()->IsLoading()) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    
+    m_session->GetPlayer()->UpdateLocalChannels(m_session->GetPlayer()->GetZoneId()); //Join channels like 'General' and 'Trade'
 }
 
 /*
@@ -52,15 +55,14 @@ void PlayerBot::SendChatWithTarget(ChatMsg chatType, std::string chatMessage, st
 
 /*
  * Channel is a string like "General", "LocalDefense", 
- * Zone is a string like "Elwynn Forest", 
  */
-void PlayerBot::SendChannelMessage(std::string channel, std::string zone, std::string message)
+void PlayerBot::SendChannelMessage(std::string channel, std::string message)
 {
-    TC_LOG_INFO("server", "Channel was sent");
     WorldPacket *packet = new WorldPacket();
     *packet << (uint32) CHAT_MSG_CHANNEL;
-    *packet << (uint32) LANG_UNIVERSAL;
-    *packet << channel + " - " + zone;
+    *packet << (uint32) LANG_COMMON;
+    *packet << channel + " - " + GetCurrentZoneName();
+    *packet << message;
     m_session->HandleMessagechatOpcode(*packet);
 }
 
@@ -82,4 +84,20 @@ void PlayerBot::SetDND(std::string afkMessage)
     *packet << (uint32) LANG_UNIVERSAL;
     *packet << afkMessage;
     m_session->HandleMessagechatOpcode(*packet);
+}
+
+std::string PlayerBot::GetCurrentZoneName()
+{
+    Player *player = m_session->GetPlayer();
+    uint32 areaId = player->GetAreaId();
+    std::string zoneName = "Unknown";
+    if (AreaTableEntry const* area = sAreaTableStore.LookupEntry(areaId))
+    {
+        int locale = m_session->GetSessionDbcLocale();
+        std::string areaName = area->area_name[locale];
+        if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(area->zone))
+            zoneName = zone->area_name[locale];
+    }
+    
+    return zoneName;
 }

@@ -3,6 +3,7 @@
 
 #include "Common.h"
 #include "Log.h"
+#include "Player.h"
 #include "WorldSession.h"
 
 class TC_GAME_API PlayerBot
@@ -14,7 +15,7 @@ public:
     void Login();
     void SendChat(ChatMsg chatType, std::string chatMessage);
     void SendChatWithTarget(ChatMsg chatType, std::string chatMessage, std::string target);
-    void SendChannelMessage(std::string channel, std::string zone, std::string message);
+    void SendChannelMessage(std::string channel, std::string message);
     void SetAFK(std::string afkMessage = "");
     void SetDND(std::string dndMessage = "");
 
@@ -22,6 +23,8 @@ private:
     uint64 m_playerGuid;
     uint32 m_accountId;
     WorldSession* m_session;
+
+    std::string GetCurrentZoneName();
 };
 
 #endif
