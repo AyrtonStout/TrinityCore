@@ -39,10 +39,11 @@ void ThingsAreAHappenin()
     while (true)
     {
         harry->TargetNearestPlayer();
-        harry->SendChat(CHAT_MSG_SAY, "hi");
-        harry->SendWhisper("Cassinia", "hi");
-        harry->SendChannelMessage("general", "whatup");
+        //harry->SendChat(CHAT_MSG_SAY, "hi");
+        //harry->SendWhisper("Cassinia", "hi");
+        //harry->SendChannelMessage("general", "whatup");
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        harry->RequestDuel();
     }
 }
 

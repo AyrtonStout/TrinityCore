@@ -5,7 +5,6 @@
  */
 void PlayerBot::SendChat(ChatMsg chatType, std::string chatMessage)
 {
-    TC_LOG_INFO("server", "Chat was sent");
     WorldPacket *packet = new WorldPacket();
     *packet << (uint32) chatType;
     *packet << (uint32) LANG_COMMON;
@@ -13,11 +12,10 @@ void PlayerBot::SendChat(ChatMsg chatType, std::string chatMessage)
     m_session->HandleMessagechatOpcode(*packet);
 }
 
-void PlayerBot::SendChatWithTarget(ChatMsg chatType, std::string chatMessage, std::string target)
+void PlayerBot::SendWhisper(std::string target, std::string chatMessage)
 {
-    TC_LOG_INFO("server", "Target chat was sent");
     WorldPacket *packet = new WorldPacket();
-    *packet << (uint32) chatType;
+    *packet << (uint32) CHAT_MSG_WHISPER;
     *packet << (uint32) LANG_COMMON;
     *packet << target;
     *packet << chatMessage;
@@ -39,7 +37,6 @@ void PlayerBot::SendChannelMessage(std::string channel, std::string message)
 
 void PlayerBot::SetAFK(std::string afkMessage)
 {
-    TC_LOG_INFO("server", "AFK was sent");
     WorldPacket *packet = new WorldPacket();
     *packet << (uint32) CHAT_MSG_AFK;
     *packet << (uint32) LANG_UNIVERSAL;
@@ -49,7 +46,6 @@ void PlayerBot::SetAFK(std::string afkMessage)
 
 void PlayerBot::SetDND(std::string afkMessage)
 {
-    TC_LOG_INFO("server", "DND was sent");
     WorldPacket *packet = new WorldPacket();
     *packet << (uint32) CHAT_MSG_DND;
     *packet << (uint32) LANG_UNIVERSAL;

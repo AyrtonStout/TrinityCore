@@ -69,6 +69,21 @@ Player* PlayerBot::GetNearestPlayer()
     return closestPlayer;
 }
 
+void PlayerBot::RequestDuel()
+{
+    Unit* target = m_session->GetPlayer()->GetSelectedUnit();
+    if (!target)
+        return;
+
+    WorldPacket *packet = new WorldPacket();
+    *packet << (uint8) 2; //Cast Count (No idea what this is used for)
+    *packet << (uint32) 7266; //Spell ID
+    *packet << (uint8) 0; //Cast Flags
+    *packet << (uint32) 2; //Target Mask (This says that this spell has a target)
+    *packet << (uint64) target->GetGUID(); //Target GUID
+    m_session->HandleCastSpellOpcode(*packet);
+}
+
 /* This may be a better way to do it (mostly copied from Creature.cpp), but this has a linker error for some reason
 Player* PlayerBot::GetNearestPlayer()
 {

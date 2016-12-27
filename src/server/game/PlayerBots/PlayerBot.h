@@ -20,6 +20,7 @@ public:
     void SetAFK(std::string afkMessage = "");
     void SetDND(std::string dndMessage = "");
     void TargetNearestPlayer();
+    void RequestDuel();
 
 private:
     uint64 m_playerGuid;
