@@ -2,6 +2,7 @@
 #define __PLAYERBOT_H
 
 #include "Common.h"
+#include "GridNotifiers.h"
 #include "Log.h"
 #include "Player.h"
 #include "WorldSession.h"
@@ -14,10 +15,11 @@ public:
 
     void Login();
     void SendChat(ChatMsg chatType, std::string chatMessage);
-    void SendChatWithTarget(ChatMsg chatType, std::string chatMessage, std::string target);
+    void SendWhisper(std::string target, std::string chatMessage);
     void SendChannelMessage(std::string channel, std::string message);
     void SetAFK(std::string afkMessage = "");
     void SetDND(std::string dndMessage = "");
+    void TargetNearestPlayer();
 
 private:
     uint64 m_playerGuid;
@@ -25,6 +27,7 @@ private:
     WorldSession* m_session;
 
     std::string GetCurrentZoneName();
+    Player* GetNearestPlayer();
 };
 
 #endif

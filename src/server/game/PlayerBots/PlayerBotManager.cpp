@@ -33,14 +33,16 @@ void ThingsAreAHappenin()
     PlayerBot *harry = new PlayerBot(playerGuid, playerAccount);
     harry->Login();
 
+    PlayerBot *iambotlol = new PlayerBot(56, 15);
+    iambotlol->Login();
+
     while (true)
     {
-        harry->SendChannelMessage("General", "hey");
-        std::this_thread::sleep_for(std::chrono::seconds(7));
-        harry->SendChannelMessage("LocalDefense", "hey yeah");
-        std::this_thread::sleep_for(std::chrono::seconds(7));
-        harry->SendChannelMessage("Trade", "hey nice");
-        std::this_thread::sleep_for(std::chrono::seconds(7));
+        harry->TargetNearestPlayer();
+        harry->SendChat(CHAT_MSG_SAY, "hi");
+        harry->SendWhisper("Cassinia", "hi");
+        harry->SendChannelMessage("general", "whatup");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
