@@ -44,8 +44,9 @@ BossBoundaryData const boundaries =
     { DATA_TERON_GOREFIEND,       new RectangleBoundary(512.5f, 613.3f, 373.2f, 432.0f)      },
     { DATA_TERON_GOREFIEND,       new ZRangeBoundary(179.5f, 223.6f)                         },
     { DATA_GURTOGG_BLOODBOIL,     new RectangleBoundary(720.5f, 864.5f, 159.3f, 316.0f)      },
-    { DATA_RELIQUARY_OF_SOULS,    new RectangleBoundary(435.9f, 558.8f, 113.3f, 229.6f)      },
-    { DATA_MOTHER_SHAHRAZ,        new RectangleBoundary(903.4f, 982.1f, 92.4f, 476.7f)       },
+    { DATA_RELIQUARY_OF_SOULS,    new RectangleBoundary(435.9f, 660.3f, 21.2f, 229.6f)       },
+    { DATA_RELIQUARY_OF_SOULS,    new ZRangeBoundary(81.8f, 148.0f)                          },
+    { DATA_MOTHER_SHAHRAZ,        new RectangleBoundary(903.4f, 982.1f, 92.4f, 313.2f)       },
     { DATA_ILLIDARI_COUNCIL,      new EllipseBoundary(Position(696.6f, 305.0f), 70.0 , 85.0) },
     { DATA_ILLIDAN_STORMRAGE,     new EllipseBoundary(Position(694.8f, 309.0f), 70.0 , 85.0) }
 };
@@ -104,6 +105,28 @@ class instance_black_temple : public InstanceMapScript
                         HandleGameObject(ObjectGuid::Empty, true, go);
             }
 
+            void OnCreatureCreate(Creature* creature) override
+            {
+                InstanceScript::OnCreatureCreate(creature);
+
+                switch (creature->GetEntry())
+                {
+                    case NPC_ASHTONGUE_STALKER:
+                    case NPC_ASHTONGUE_BATTLELORD:
+                    case NPC_ASHTONGUE_MYSTIC:
+                    case NPC_ASHTONGUE_PRIMALIST:
+                    case NPC_ASHTONGUE_STORMCALLER:
+                    case NPC_ASHTONGUE_FERAL_SPIRIT:
+                    case NPC_STORM_FURY:
+                        AshtongueGUIDs.emplace_back(creature->GetGUID());
+                        if (GetBossState(DATA_SHADE_OF_AKAMA) == DONE)
+                            creature->setFaction(ASHTONGUE_FACTION_FRIEND);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
             bool SetBossState(uint32 type, EncounterState state) override
             {
                 if (!InstanceScript::SetBossState(type, state))
@@ -117,6 +140,11 @@ class instance_black_temple : public InstanceMapScript
                                 trigger->AI()->Talk(EMOTE_HIGH_WARLORD_NAJENTUS_DIED);
                         break;
                     case DATA_SHADE_OF_AKAMA:
+                        if (state == DONE)
+                            for (ObjectGuid ashtongueGuid : AshtongueGUIDs)
+                                if (Creature* ashtongue = instance->GetCreature(ashtongueGuid))
+                                    ashtongue->setFaction(ASHTONGUE_FACTION_FRIEND);
+                        // no break
                     case DATA_TERON_GOREFIEND:
                     case DATA_GURTOGG_BLOODBOIL:
                     case DATA_RELIQUARY_OF_SOULS:
@@ -143,6 +171,8 @@ class instance_black_temple : public InstanceMapScript
                         return false;
                 return true;
             }
+        protected:
+            GuidVector AshtongueGUIDs;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

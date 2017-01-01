@@ -764,12 +764,17 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
     if (buyp == 0)
         buyp = 1;
 
+<<<<<<< HEAD
     float distributionMean = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MEAN);
     float distributionSigma = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_SIGMA);
     std::normal_distribution<double> distribution(distributionMean, distributionSigma);
 
     double priceVariance = distribution(_randGenerator);
     bidp = static_cast<uint32>(priceVariance * buyp);
+    /*
+    float bidPercentage = frand(sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MIN), sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MAX));
+    bidp = static_cast<uint32>(bidPercentage * buyp);
+    */
     if (bidp == 0)
         bidp = 1;
 }

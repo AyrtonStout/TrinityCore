@@ -965,7 +965,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
 
     // Set FFA PvP for non GM in non-rest mode
     if (sWorld->IsFFAPvPRealm() && !pCurrChar->IsGameMaster() && !pCurrChar->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING))
-        pCurrChar->SetByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
+        pCurrChar->SetByteFlag(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_PVP_FLAG, UNIT_BYTE2_FLAG_FFA_PVP);
 
     if (pCurrChar->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_CONTESTED_PVP))
         pCurrChar->SetContestedPvP();
@@ -1509,6 +1509,13 @@ void WorldSession::HandleEquipmentSetSave(WorldPacket& recvData)
         ObjectGuid itemGuid;
         recvData >> itemGuid.ReadAsPacked();
 
+        // if client sends 0, it means empty slot
+        if (itemGuid.IsEmpty())
+        {
+            eqSet.Items[i] = 0;
+            continue;
+        }
+
         // equipment manager sends "1" (as raw GUID) for slots set to "ignore" (don't touch slot at equip set)
         if (itemGuid.GetRawValue() == 1)
         {
@@ -1517,13 +1524,13 @@ void WorldSession::HandleEquipmentSetSave(WorldPacket& recvData)
             continue;
         }
 
+        // some cheating checks
         Item* item = _player->GetItemByPos(INVENTORY_SLOT_BAG_0, i);
-
-        if (!item && itemGuid)                               // cheating check 1
-            return;
-
-        if (item && item->GetGUID() != itemGuid)             // cheating check 2
-            return;
+        if (!item || item->GetGUID() != itemGuid)
+        {
+            eqSet.Items[i] = 0;
+            continue;
+        }
 
         eqSet.Items[i] = itemGuid.GetCounter();
     }

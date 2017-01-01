@@ -193,7 +193,7 @@ enum AuctionBotConfigBoolValues
 enum AuctionBotConfigFloatValues
 {
     CONFIG_AHBOT_BUYER_CHANCE_FACTOR,
-    CONFIG_AHBOT_BIDPRICE_MEAN,
+    CONFIG_AHBOT_BIDPRICE_MEAN, //TODO I meant to have this be buyout price mean and sigma
     CONFIG_AHBOT_BIDPRICE_SIGMA,
     CONFIG_AHBOT_MISCITEM_PRICE,
     CONFIG_AHBOT_BUYPRICE_VARIANCE,
@@ -206,7 +206,9 @@ enum AuctionBotConfigFloatValues
     CONFIG_AHBOT_ITEMLEVEL_251,
     CONFIG_AHBOT_ITEMLEVEL_258,
     CONFIG_AHBOT_ITEMLEVEL_264,
-    CONFIG_AHBOT_FLOAT_COUNT //THIS NEEDS TO BE LAST
+    CONFIG_AHBOT_BIDPRICE_MIN,
+    CONFIG_AHBOT_BIDPRICE_MAX,
+    CONFIG_AHBOT_FLOAT_COUNT
 };
 
 // All basic config data used by other AHBot classes for self-configure.
