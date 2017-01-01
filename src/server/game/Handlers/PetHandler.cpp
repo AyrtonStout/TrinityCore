@@ -596,7 +596,7 @@ void WorldSession::HandlePetRename(WorldPacket& recvData)
     Pet* pet = ObjectAccessor::GetPet(*_player, petguid);
                                                             // check it!
     if (!pet || !pet->IsPet() || ((Pet*)pet)->getPetType() != HUNTER_PET ||
-        !pet->HasByteFlag(UNIT_FIELD_BYTES_2, 2, UNIT_CAN_BE_RENAMED) ||
+        !pet->HasByteFlag(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_PET_FLAGS, UNIT_CAN_BE_RENAMED) ||
         pet->GetOwnerGUID() != _player->GetGUID() || !pet->GetCharmInfo())
         return;
 
@@ -618,7 +618,7 @@ void WorldSession::HandlePetRename(WorldPacket& recvData)
     if (pet->GetOwner()->GetGroup())
         pet->GetOwner()->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_NAME);
 
-    pet->RemoveByteFlag(UNIT_FIELD_BYTES_2, 2, UNIT_CAN_BE_RENAMED);
+    pet->RemoveByteFlag(UNIT_FIELD_BYTES_2, UNIT_BYTES_2_OFFSET_PET_FLAGS, UNIT_CAN_BE_RENAMED);
 
     if (isdeclined)
     {
@@ -676,20 +676,15 @@ void WorldSession::HandlePetAbandon(WorldPacket& recvData)
 
     // pet/charmed
     Creature* pet = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, guid);
-    if (pet)
+    if (pet && pet->ToPet() && pet->ToPet()->getPetType() == HUNTER_PET)
     {
-        if (pet->IsPet())
+        if (pet->GetGUID() == _player->GetPetGUID())
         {
-            if (pet->GetGUID() == _player->GetPetGUID())
-            {
-                uint32 feelty = pet->GetPower(POWER_HAPPINESS);
-                pet->SetPower(POWER_HAPPINESS, feelty > 50000 ? (feelty-50000) : 0);
-            }
-
-            _player->RemovePet((Pet*)pet, PET_SAVE_AS_DELETED);
+            uint32 feelty = pet->GetPower(POWER_HAPPINESS);
+            pet->SetPower(POWER_HAPPINESS, feelty > 50000 ? (feelty-50000) : 0);
         }
-        else if (pet->GetGUID() == _player->GetCharmGUID())
-            _player->StopCastingCharm();
+
+        _player->RemovePet((Pet*)pet, PET_SAVE_AS_DELETED);
     }
 }
 

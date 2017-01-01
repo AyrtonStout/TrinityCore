@@ -1944,14 +1944,10 @@ class spell_gen_mount : public SpellScriptLoader
                     target->RemoveAurasByType(SPELL_AURA_MOUNTED, ObjectGuid::Empty, GetHitAura());
 
                     // Triggered spell id dependent on riding skill and zone
-                    bool canFly = false;
-                    uint32 map = GetVirtualMapForMapAndZone(target->GetMapId(), target->GetZoneId());
-                    if (map == 530 || (map == 571 && target->HasSpell(SPELL_COLD_WEATHER_FLYING)))
-                        canFly = true;
-
-                    AreaTableEntry const* area = sAreaTableStore.LookupEntry(target->GetAreaId());
-                    if (!area || (canFly && (area->flags & AREA_FLAG_NO_FLY_ZONE)))
-                        canFly = false;
+                    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(_mount150);
+                    uint32 zoneid, areaid;
+                    target->GetZoneAndAreaId(zoneid, areaid);
+                    bool const canFly = spellInfo && (spellInfo->CheckLocation(target->GetMapId(), zoneid, areaid, target) == SPELL_CAST_OK);
 
                     uint32 mount = 0;
                     switch (target->GetBaseSkillValue(SKILL_RIDING))
@@ -1987,16 +1983,13 @@ class spell_gen_mount : public SpellScriptLoader
                     }
 
                     if (mount)
-                    {
-                        PreventHitAura();
                         target->CastSpell(target, mount, true);
-                    }
                 }
             }
 
             void Register() override
             {
-                 OnEffectHitTarget += SpellEffectFn(spell_gen_mount_SpellScript::HandleMount, EFFECT_2, SPELL_EFFECT_SCRIPT_EFFECT);
+                OnEffectHitTarget += SpellEffectFn(spell_gen_mount_SpellScript::HandleMount, EFFECT_2, SPELL_EFFECT_SCRIPT_EFFECT);
             }
 
         private:
@@ -2725,6 +2718,48 @@ class spell_gen_orc_disguise : public SpellScriptLoader
         SpellScript* GetSpellScript() const override
         {
             return new spell_gen_orc_disguise_SpellScript();
+        }
+};
+
+enum ParalyticPoison
+{
+    SPELL_PARALYSIS = 35202
+};
+
+// 35201 - Paralytic Poison
+class spell_gen_paralytic_poison : public SpellScriptLoader
+{
+    public:
+        spell_gen_paralytic_poison() : SpellScriptLoader("spell_gen_paralytic_poison") { }
+
+        class spell_gen_paralytic_poison_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_gen_paralytic_poison_AuraScript);
+
+            bool Validate(SpellInfo const* /*spellInfo*/) override
+            {
+                if (!sSpellMgr->GetSpellInfo(SPELL_PARALYSIS))
+                    return false;
+                return true;
+            }
+
+            void HandleStun(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+            {
+                if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
+                    return;
+
+                GetTarget()->CastSpell((Unit*)nullptr, SPELL_PARALYSIS, true, nullptr, aurEff);
+            }
+
+            void Register() override
+            {
+                AfterEffectRemove += AuraEffectRemoveFn(spell_gen_paralytic_poison_AuraScript::HandleStun, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
+            }
+        };
+
+        AuraScript* GetAuraScript() const override
+        {
+            return new spell_gen_paralytic_poison_AuraScript();
         }
 };
 
@@ -3907,7 +3942,7 @@ public:
             if (!target)
                 return;
 
-            target->SetByteValue(UNIT_FIELD_BYTES_1, 0, UNIT_STAND_STATE_STAND);
+            target->SetStandState(UNIT_STAND_STATE_STAND);
             target->HandleEmoteCommand(EMOTE_STATE_NONE);
         }
 
@@ -4410,6 +4445,7 @@ void AddSC_generic_spell_scripts()
     new spell_gen_on_tournament_mount();
     new spell_gen_oracle_wolvar_reputation();
     new spell_gen_orc_disguise();
+    new spell_gen_paralytic_poison();
     new spell_gen_proc_below_pct_damaged("spell_item_soul_harvesters_charm");
     new spell_gen_proc_below_pct_damaged("spell_item_commendation_of_kaelthas");
     new spell_gen_proc_below_pct_damaged("spell_item_corpse_tongue_coin");

@@ -3230,13 +3230,12 @@ AuctionHouseBot.BuyPrice.Seller = 1
 
 AuctionHouseBot.BuyPrice.Variance = 0.04
 
-#
 #    AuctionHouseBot.BidPrice.*
 #       Description: These values determine the range that the Bid Price will fall into, as a percentage of the Buy Price
-#       Default:     0.1 - (Min)
+#       Default:     0.6 - (Min)
 #                    0.9 - (Max)
 
-AuctionHouseBot.BidPrice.Min = 0.1
+AuctionHouseBot.BidPrice.Min = 0.6
 AuctionHouseBot.BidPrice.Max = 0.9
 
 #
