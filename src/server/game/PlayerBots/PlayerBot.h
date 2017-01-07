@@ -14,11 +14,15 @@ public:
     ~PlayerBot();
 
     void Login();
+
     void SendChat(ChatMsg chatType, std::string chatMessage);
     void SendWhisper(std::string target, std::string chatMessage);
     void SendChannelMessage(std::string channel, std::string message);
     void SetAFK(std::string afkMessage = "");
     void SetDND(std::string dndMessage = "");
+
+    void HandleChat(ChatMsg chatType, Language language, uint64 senderGuid, uint64 receiverGuid, std::string message, uint32 achievementId);
+
     void TargetNearestPlayer();
     void RequestDuel();
 

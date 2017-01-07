@@ -764,7 +764,6 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
     if (buyp == 0)
         buyp = 1;
 
-<<<<<<< HEAD
     float distributionMean = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MEAN);
     float distributionSigma = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_SIGMA);
     std::normal_distribution<double> distribution(distributionMean, distributionSigma);

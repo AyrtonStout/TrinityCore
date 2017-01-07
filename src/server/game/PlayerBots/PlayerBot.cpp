@@ -84,6 +84,14 @@ void PlayerBot::RequestDuel()
     m_session->HandleCastSpellOpcode(*packet);
 }
 
+void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGuid, uint64 receiverGuid, std::string message, uint32 achievementId)
+{
+    if (message == "duel?") {
+        TargetNearestPlayer();
+        RequestDuel();
+    }
+}
+
 /* This may be a better way to do it (mostly copied from Creature.cpp), but this has a linker error for some reason
 Player* PlayerBot::GetNearestPlayer()
 {

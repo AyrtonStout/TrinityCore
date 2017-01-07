@@ -45,6 +45,7 @@
 #include "WardenMac.h"
 #include "PacketUtilities.h"
 #include "Metric.h"
+#include "PlayerBotManager.h"
 
 #include <zlib.h>
 
@@ -194,6 +195,11 @@ ObjectGuid::LowType WorldSession::GetGUIDLow() const
 void WorldSession::SendPacket(WorldPacket const* packet)
 {
     ASSERT(packet->GetOpcode() != NULL_OPCODE);
+
+    if (m_isPlayerBot) {
+        sPlayerBotManager->HandlePacket(packet, _player->GetGUID().GetCounter());
+        return;
+    }
 
     if (!m_Socket)
         return;
