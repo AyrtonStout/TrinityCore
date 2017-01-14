@@ -25,6 +25,9 @@ public:
 
     void TargetNearestPlayer();
     void RequestDuel();
+    void AcceptDuel();
+    void RejectDuel();
+    bool IsDueling();
 
 private:
     uint64 m_playerGuid;

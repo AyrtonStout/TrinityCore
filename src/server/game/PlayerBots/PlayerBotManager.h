@@ -20,12 +20,13 @@ private:
     void MainThread();
 
     void HandleChatPacket(WorldPacket *packet, uint64 botGuid);
+    void HandleDuelRequest(WorldPacket *packet, uint64 botGuid);
 
     std::map<uint64, PlayerBot*> m_botMap;
 public:
     static PlayerBotManager* instance();
     bool Initialize();
-    void HandlePacket(WorldPacket const* packet, uint64 botGuid);
+    void HandlePacket(WorldPacket *packet, uint64 botGuid);
 };
 
 #define sPlayerBotManager PlayerBotManager::instance()

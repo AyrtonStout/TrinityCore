@@ -22,11 +22,11 @@ void PlayerBotManager::MainThread()
     uint64 playerGuid = 1;
     uint64 playerAccount = 1;
     PlayerBot *harry = new PlayerBot(playerGuid, playerAccount);
-    harry->Login();
     m_botMap[playerGuid] = harry;
+    harry->Login();
 
-    //PlayerBot *iambotlol = new PlayerBot(56, 15);
-    //iambotlol->Login();
+    PlayerBot *iambotlol = new PlayerBot(56, 15);
+    iambotlol->Login();
 
     while (true)
     {
@@ -34,7 +34,8 @@ void PlayerBotManager::MainThread()
         //harry->SendChat(CHAT_MSG_SAY, "hi");
         //harry->SendWhisper("Cassinia", "hi");
         //harry->SendChannelMessage("general", "whatup");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
         //harry->RequestDuel();
     }
 }
@@ -47,7 +48,6 @@ bool PlayerBotManager::Initialize()
 
 void PlayerBotManager::HandleChatPacket(WorldPacket *packet, uint64 botGuid)
 {
-    TC_LOG_INFO("server", "Chat received");
     uint8 chatType, chatTag; //Idk what chatTag is
     uint32 language, someFlagsThatMightNotEvenBeUsed, messageLength, achievementId;
     uint64 senderGuid, receiverGuid;
@@ -70,13 +70,44 @@ void PlayerBotManager::HandleChatPacket(WorldPacket *packet, uint64 botGuid)
         *packet >> achievementId;
     }
 
-    PlayerBot *chatTarget = m_botMap[botGuid];
-    chatTarget->HandleChat((ChatMsg) chatType, (Language) language, senderGuid, receiverGuid, message, achievementId);
+    PlayerBot *bot = m_botMap[botGuid];
+    if (!bot)
+        return;
+
+    bot->HandleChat((ChatMsg) chatType, (Language) language, senderGuid, receiverGuid, message, achievementId);
 }
 
-void PlayerBotManager::HandlePacket(WorldPacket const* p, uint64 botGuid)
+void PlayerBotManager::HandleDuelRequest(WorldPacket *packet, uint64 botGuid)
 {
-    WorldPacket *packet = new WorldPacket(*p); //For the bots' purposes, the packet to be non-const
+    uint64 objectGuid, casterGuid;
+    *packet >> objectGuid;
+    *packet >> casterGuid;
+
+    if (casterGuid == botGuid) {
+        //TC_LOG_INFO("server", "caster guid was bot guid");
+        return; //This happens if the bot initiated the duel
+    }
+
+    PlayerBot *bot = m_botMap[botGuid];
+    if (!bot)
+        return;
+
+    //The duel packet is sent before the bots are flagged as being in a duel. Wait for the flag to be set.
+    for (uint8 i = 0; i < 100; i++) {
+        if (bot->IsDueling()) {
+            bot->AcceptDuel();
+            return;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    TC_LOG_INFO("server", "Bot was challenged to a duel but never was flagged as being in a duel");
+}
+
+void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
+{
+    if (!packet)
+        return;
+
     switch (packet->GetOpcode())
     {
         case 66:
@@ -96,7 +127,7 @@ void PlayerBotManager::HandlePacket(WorldPacket const* p, uint64 botGuid)
         case 215: //Animation set
         case 502:
         case 533: //Object despawn animation
-            TC_LOG_INFO("server", "Update object");
+            //TC_LOG_INFO("server", "Update object");
             break;
         case 181: //Start forward movement
         case 182: //Start backpedal
@@ -173,7 +204,7 @@ void PlayerBotManager::HandlePacket(WorldPacket const* p, uint64 botGuid)
             TC_LOG_INFO("server", "Bind point update");
             break;
         case 359: //Seems to fire for the person who requested it (and maybe also the receiver)
-            TC_LOG_INFO("server", "Duel requested");
+            HandleDuelRequest(packet, botGuid);
             break;
         case 362:
             TC_LOG_INFO("server", "Duel complete");
@@ -217,7 +248,7 @@ void PlayerBotManager::HandlePacket(WorldPacket const* p, uint64 botGuid)
             break;
         case 781:
         case 782:
-            TC_LOG_INFO("server", "Set run/walk mode");
+            //TC_LOG_INFO("server", "Set run/walk mode");
             break;
         case 809:
         case 827:
@@ -227,7 +258,7 @@ void PlayerBotManager::HandlePacket(WorldPacket const* p, uint64 botGuid)
             TC_LOG_INFO("server", "Message of the day");
             break;
         case 912:
-            TC_LOG_INFO("server", "Time sync");
+            //TC_LOG_INFO("server", "Time sync");
             break;
         case 969:
             TC_LOG_INFO("server", "Feature system status");

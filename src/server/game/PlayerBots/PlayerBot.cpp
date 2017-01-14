@@ -84,6 +84,26 @@ void PlayerBot::RequestDuel()
     m_session->HandleCastSpellOpcode(*packet);
 }
 
+void PlayerBot::AcceptDuel()
+{
+    TC_LOG_INFO("server", "Bot is attempting to accept duel");
+    WorldPacket *packet = new WorldPacket();
+    *packet << uint64(0); //The duel handler expects to find a GUID in it but doesn't actually use it
+    m_session->HandleDuelAcceptedOpcode(*packet);
+}
+
+void PlayerBot::RejectDuel()
+{
+    WorldPacket *packet = new WorldPacket();
+    *packet << uint64(0); //The duel handler expects to find a GUID in it but doesn't actually use it
+    m_session->HandleDuelCancelledOpcode(*packet);
+}
+
+bool PlayerBot::IsDueling()
+{
+    return m_session->GetPlayer()->duel != NULL;
+}
+
 void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGuid, uint64 receiverGuid, std::string message, uint32 achievementId)
 {
     if (message == "duel?") {

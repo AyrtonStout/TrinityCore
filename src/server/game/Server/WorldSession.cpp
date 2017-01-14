@@ -197,7 +197,16 @@ void WorldSession::SendPacket(WorldPacket const* packet)
     ASSERT(packet->GetOpcode() != NULL_OPCODE);
 
     if (m_isPlayerBot) {
-        sPlayerBotManager->HandlePacket(packet, _player->GetGUID().GetCounter());
+        if (sPlayerBotManager) {
+            WorldPacket *bestPacket = new WorldPacket(*packet);
+            std::thread ([this, bestPacket] {
+                if (_player && _player->GetGUID()) {
+                    uint64 botGuid = (uint64) _player->GetGUID().GetCounter();
+                    sPlayerBotManager->HandlePacket(bestPacket, botGuid);
+                    delete bestPacket;
+                }
+            }).detach();
+        }
         return;
     }
 
