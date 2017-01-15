@@ -7209,8 +7209,20 @@ void Spell::InitEffectExecuteData(uint8 effIndex)
 
 void Spell::AssertEffectExecuteData() const
 {
-    for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
+    for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i) {
+        // This is a hack fix for PlayerBots. Because PlayerBots do stuff in their own thread, it is possible (apparently) that
+        // a spell starts to go through a deletion process before everything is cleared out. This is probably because the emptying
+        // out of the m_effectExecuteData happens in a separate thread than the deletion of the spell itself. This hack fix will
+        // try to wait on the data to clear out, and if it doesn't, it will then crash. It's possible this will cause problems again
+        // in the future, and if it does, a more elegant solution will need to be found. But I'm not going to bother finding it
+        // right now because this file is 9000 lines long and I really don't feel like it.
+        for (uint8 j = 0; j < 10; j++) {
+            if (m_effectExecuteData[i]) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
         ASSERT(!m_effectExecuteData[i]);
+    }
 }
 
 void Spell::LoadScripts()
