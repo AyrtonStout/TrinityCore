@@ -84,6 +84,11 @@ void PlayerBot::RequestDuel()
     m_session->HandleCastSpellOpcode(*packet);
 }
 
+void PlayerBot::HandleDuelRequest(uint64 challengerGuid)
+{
+
+}
+
 void PlayerBot::AcceptDuel()
 {
     TC_LOG_INFO("server", "Bot is attempting to accept duel");

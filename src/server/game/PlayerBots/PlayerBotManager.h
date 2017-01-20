@@ -22,6 +22,8 @@ private:
     void HandleChatPacket(WorldPacket *packet, uint64 botGuid);
     void HandleDuelRequest(WorldPacket *packet, uint64 botGuid);
 
+    PlayerBot *GetOfflineBot();
+
     std::map<uint64, PlayerBot*> m_botMap;
 public:
     static PlayerBotManager* instance();

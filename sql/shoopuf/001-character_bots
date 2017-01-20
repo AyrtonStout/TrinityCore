@@ -1,0 +1,9 @@
+CREATE TABLE `wotlk_character`.`character_bots` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `character_id` INT UNSIGNED NOT NULL,
+      `account_id` INT UNSIGNED NOT NULL,
+        PRIMARY KEY (`id`))
+	ENGINE = InnoDB
+	DEFAULT CHARACTER SET = utf8
+	COMMENT = 'Any players that show up in this table ';
+

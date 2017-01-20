@@ -19,17 +19,15 @@ PlayerBotManager* PlayerBotManager::instance()
 void PlayerBotManager::MainThread()
 {
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    uint64 playerGuid = 1;
-    uint64 playerAccount = 1;
-    PlayerBot *harry = new PlayerBot(playerGuid, playerAccount);
-    m_botMap[playerGuid] = harry;
-    harry->Login();
-
-    PlayerBot *iambotlol = new PlayerBot(56, 15);
-    iambotlol->Login();
 
     while (true)
     {
+        PlayerBot *bot = GetOfflineBot();
+        if (bot) {
+            m_botMap[bot->GetGuid()] = bot;
+            bot->Login();
+        }
+
         //harry->TargetNearestPlayer();
         //harry->SendChat(CHAT_MSG_SAY, "hi");
         //harry->SendWhisper("Cassinia", "hi");
@@ -37,6 +35,25 @@ void PlayerBotManager::MainThread()
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
         //harry->RequestDuel();
+    }
+}
+
+PlayerBot *PlayerBotManager::GetOfflineBot()
+{
+    std::string query = "SELECT character_id, account_id "
+                        "FROM character_bots cb "
+                        "LEFT JOIN characters c "
+                        "ON cb.character_id = c.guid "
+                        "WHERE online = 0 "
+                        "LIMIT 1";
+
+    QueryResult result = CharacterDatabase.Query(query.c_str());
+    if (result) {
+        Field* fields = result->Fetch();
+        return new PlayerBot(fields[0].GetUInt64(), fields[1].GetUInt64());
+    }
+    else {
+        return NULL;
     }
 }
 
@@ -84,7 +101,6 @@ void PlayerBotManager::HandleDuelRequest(WorldPacket *packet, uint64 botGuid)
     *packet >> casterGuid;
 
     if (casterGuid == botGuid) {
-        //TC_LOG_INFO("server", "caster guid was bot guid");
         return; //This happens if the bot initiated the duel
     }
 

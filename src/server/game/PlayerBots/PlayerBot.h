@@ -27,7 +27,10 @@ public:
     void RequestDuel();
     void AcceptDuel();
     void RejectDuel();
+    void HandleDuelRequest(uint64 challengerGuid);
     bool IsDueling();
+
+    uint64 GetGuid() { return m_playerGuid; }
 
 private:
     uint64 m_playerGuid;
