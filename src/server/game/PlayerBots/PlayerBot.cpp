@@ -115,6 +115,47 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
         TargetNearestPlayer();
         RequestDuel();
     }
+    else if (message == "attack") {
+        StartAttack();
+    }
+    else if (message == "stop") {
+        StopAttack();
+    }
+    else if (message == "draw") {
+        SetWeaponSheath(SHEATH_STATE_MELEE);
+    }
+    else if (message == "sheath") {
+        SetWeaponSheath(SHEATH_STATE_UNARMED);
+    }
+}
+
+void PlayerBot::StartAttack()
+{
+    Unit *target = m_session->GetPlayer()->GetSelectedUnit();
+    if (target) {
+        SetWeaponSheath(SHEATH_STATE_MELEE);
+
+        WorldPacket *packet = new WorldPacket();
+        *packet << target->GetGUID();
+        m_session->HandleAttackSwingOpcode(*packet);
+    }
+}
+
+void PlayerBot::StopAttack()
+{
+    WorldPacket *packet = new WorldPacket();
+    m_session->HandleAttackStopOpcode(*packet);
+}
+
+void PlayerBot::SetWeaponSheath(SheathState state)
+{
+    SheathState currentState = m_session->GetPlayer()->GetSheath();
+    if (currentState == state)
+        return;
+
+    WorldPacket *packet = new WorldPacket();
+    *packet << (uint32) state;
+    m_session->HandleSetSheathedOpcode(*packet);
 }
 
 /* This may be a better way to do it (mostly copied from Creature.cpp), but this has a linker error for some reason

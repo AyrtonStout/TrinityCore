@@ -30,6 +30,10 @@ public:
     void HandleDuelRequest(uint64 challengerGuid);
     bool IsDueling();
 
+    void StartAttack();
+    void StopAttack();
+    void SetWeaponSheath(SheathState state);
+
     uint64 GetGuid() { return m_playerGuid; }
 
 private:
