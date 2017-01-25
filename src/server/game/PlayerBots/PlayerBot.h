@@ -5,6 +5,7 @@
 #include "GridNotifiers.h"
 #include "Log.h"
 #include "Player.h"
+#include "PlayerBotSpells.h"
 #include "WorldSession.h"
 
 class TC_GAME_API PlayerBot
@@ -24,6 +25,8 @@ public:
     void HandleChat(ChatMsg chatType, Language language, uint64 senderGuid, uint64 receiverGuid, std::string message, uint32 achievementId);
 
     void TargetNearestPlayer();
+    void TargetSelf();
+
     void RequestDuel();
     void AcceptDuel();
     void RejectDuel();
@@ -33,6 +36,8 @@ public:
     void StartAttack();
     void StopAttack();
     void SetWeaponSheath(SheathState state);
+
+    void CastSpell(PlayerBotSpell spell);
 
     uint64 GetGuid() { return m_playerGuid; }
 

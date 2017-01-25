@@ -45,6 +45,13 @@ void PlayerBot::TargetNearestPlayer()
     m_session->HandleSetSelectionOpcode(*packet);
 }
 
+void PlayerBot::TargetSelf()
+{
+    WorldPacket *packet = new WorldPacket();
+    *packet << m_playerGuid;
+    m_session->HandleSetSelectionOpcode(*packet);
+}
+
 Player* PlayerBot::GetNearestPlayer()
 {
     Player *self = m_session->GetPlayer();
@@ -76,7 +83,7 @@ void PlayerBot::RequestDuel()
         return;
 
     WorldPacket *packet = new WorldPacket();
-    *packet << (uint8) 2; //Cast Count (No idea what this is used for)
+    *packet << (uint8) TARGET_FLAG_UNIT;
     *packet << (uint32) 7266; //Spell ID
     *packet << (uint8) 0; //Cast Flags
     *packet << (uint32) 2; //Target Mask (This says that this spell has a target)
@@ -127,6 +134,25 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "sheath") {
         SetWeaponSheath(SHEATH_STATE_UNARMED);
     }
+    else if (message == "shield") {
+        TargetSelf();
+        CastSpell(SPELL_POWER_WORD_SHIELD);
+    }
+}
+
+void PlayerBot::CastSpell(PlayerBotSpell spell)
+{
+    Unit* target = m_session->GetPlayer()->GetSelectedUnit();
+    if (!target)
+        return;
+
+    WorldPacket *packet = new WorldPacket();
+    *packet << (uint8) 2; //Some random counter
+    *packet << (uint32) spell; //Spell ID
+    *packet << (uint8) 0; //Cast Flags
+    *packet << (uint32) TARGET_FLAG_UNIT; //Target Mask (This says that this spell has a target)
+    *packet << (uint64) target->GetGUID(); //Target GUID
+    m_session->HandleCastSpellOpcode(*packet);
 }
 
 void PlayerBot::StartAttack()
