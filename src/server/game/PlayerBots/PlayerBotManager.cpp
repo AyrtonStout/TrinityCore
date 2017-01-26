@@ -59,6 +59,7 @@ PlayerBot *PlayerBotManager::GetOfflineBot()
 
 bool PlayerBotManager::Initialize()
 {
+    PlayerBot::SetUpSpells();
     std::thread([this] { MainThread(); }).detach();
     return true;
 }

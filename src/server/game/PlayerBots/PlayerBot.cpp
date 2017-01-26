@@ -83,10 +83,10 @@ void PlayerBot::RequestDuel()
         return;
 
     WorldPacket *packet = new WorldPacket();
-    *packet << (uint8) TARGET_FLAG_UNIT;
+    *packet << (uint8) 2; //Random mysterious spell counter
     *packet << (uint32) 7266; //Spell ID
     *packet << (uint8) 0; //Cast Flags
-    *packet << (uint32) 2; //Target Mask (This says that this spell has a target)
+    *packet << (uint32) TARGET_FLAG_UNIT; //Target Mask (This says that this spell has a target)
     *packet << (uint64) target->GetGUID(); //Target GUID
     m_session->HandleCastSpellOpcode(*packet);
 }
@@ -146,11 +146,16 @@ void PlayerBot::CastSpell(PlayerBotSpell spell)
     if (!target)
         return;
 
+    SpellDescriptor spellDesc = PlayerBot::m_spellLookup[spell];
+    if (spellDesc.spellId == 0) {
+        return;
+    }
+
     WorldPacket *packet = new WorldPacket();
     *packet << (uint8) 2; //Some random counter
-    *packet << (uint32) spell; //Spell ID
+    *packet << (uint32) spellDesc.spellId;
     *packet << (uint8) 0; //Cast Flags
-    *packet << (uint32) TARGET_FLAG_UNIT; //Target Mask (This says that this spell has a target)
+    *packet << (uint32) spellDesc.targetFlag; //Target Mask (This says that this spell has a target)
     *packet << (uint64) target->GetGUID(); //Target GUID
     m_session->HandleCastSpellOpcode(*packet);
 }

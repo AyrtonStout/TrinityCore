@@ -6,7 +6,12 @@ enum PlayerBotSpell {
     SPELL_FLASH_HEAL = 48071,
     SPELL_HOLY_NOVA = 48077,
     SPELL_LESSER_HEAL = 2050,
-    SPELL_SMITE = 585
+    SPELL_SMITE = 585,
+};
+
+typedef struct SpellDescriptor {
+    PlayerBotSpell spellId;
+    SpellCastTargetFlags targetFlag;
 };
 
 #endif

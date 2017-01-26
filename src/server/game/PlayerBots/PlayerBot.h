@@ -14,6 +14,8 @@ public:
     PlayerBot(uint64 playerGuid, uint32 accountId);
     ~PlayerBot();
 
+    static void SetUpSpells();
+
     void Login();
 
     void SendChat(ChatMsg chatType, std::string chatMessage);
@@ -45,6 +47,8 @@ private:
     uint64 m_playerGuid;
     uint32 m_accountId;
     WorldSession* m_session;
+
+    static std::map<PlayerBotSpell, SpellDescriptor> m_spellLookup;
 
     std::string GetCurrentZoneName();
     Player* GetNearestPlayer();
