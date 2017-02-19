@@ -76,6 +76,36 @@ Player* PlayerBot::GetNearestPlayer()
     return closestPlayer;
 }
 
+void PlayerBot::FaceTarget()
+{
+    Unit *target = m_session->GetPlayer()->GetSelectedUnit();
+    if (!target)
+        return;
+
+    Player *self = m_session->GetPlayer();
+
+    if (target->GetGUID() == self->GetGUID())
+        return;
+
+    Position p = target->GetPosition();
+
+    float angle = m_session->GetPlayer()->GetAngle(p);
+
+    WorldPacket *packet = new WorldPacket();
+    packet->SetOpcode(MSG_MOVE_SET_FACING);
+    *packet << self->GetGUID().WriteAsPacked();
+    *packet << (uint32) 0; //Flags1 
+                           ///Search for MOVEMENTFLAG if these need to be set in the future
+    *packet << (uint16) 0; //Flags2 
+                           ///Search for MOVEMENTFLAG2 if these need to be set in the future
+                           ///(TODO If the bot is swimming these flags will need to be set, and we will need to insert the pitchint of the bot)
+    *packet << (uint32) getMSTime(); //Time
+    Position *newPosition = new Position(self->GetPositionX(), self->GetPositionY(), self->GetPositionZ(), angle);
+    *packet << newPosition->PositionXYZOStream();
+    *packet << (uint32) 0; // Fall Time
+    m_session->HandleMovementOpcodes(*packet);
+}
+
 void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGuid, uint64 receiverGuid, std::string message, uint32 achievementId)
 {
     if (message == "duel?") {
@@ -105,6 +135,12 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "smite") {
         TargetNearestPlayer();
         CastSpell(SPELL_SMITE);
+    }
+    else if (message == "target") {
+        TargetNearestPlayer();
+    }
+    else if (message == "face") {
+        FaceTarget();
     }
 }
 

@@ -29,6 +29,8 @@ public:
     void TargetNearestPlayer();
     void TargetSelf();
 
+    void FaceTarget();
+
     void RequestDuel();
     void AcceptDuel();
     void RejectDuel();
