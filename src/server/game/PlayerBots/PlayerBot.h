@@ -43,6 +43,8 @@ public:
 
     void CastSpell(PlayerBotSpell spell);
 
+    void WalkForward();
+
     uint64 GetGuid() { return m_playerGuid; }
 
 private:
