@@ -17,7 +17,8 @@ private:
     PlayerBotManager();
     ~PlayerBotManager();
 
-    void MainThread();
+    void BotLoginThread();
+    void BotUpdateThread();
 
     void HandleChatPacket(WorldPacket *packet, uint64 botGuid);
     void HandleDuelRequest(WorldPacket *packet, uint64 botGuid);

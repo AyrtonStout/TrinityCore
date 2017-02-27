@@ -16,7 +16,7 @@ PlayerBotManager* PlayerBotManager::instance()
     return &instance;
 }
 
-void PlayerBotManager::MainThread()
+void PlayerBotManager::BotLoginThread()
 {
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
@@ -24,8 +24,8 @@ void PlayerBotManager::MainThread()
     {
         PlayerBot *bot = GetOfflineBot();
         if (bot) {
-            m_botMap[bot->GetGuid()] = bot;
             bot->Login();
+            m_botMap[bot->GetGuid()] = bot;
         }
 
         //harry->TargetNearestPlayer();
@@ -35,6 +35,25 @@ void PlayerBotManager::MainThread()
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
         //harry->RequestDuel();
+    }
+}
+
+void PlayerBotManager::BotUpdateThread()
+{
+    while (true) {
+        uint32 startTime = getMSTime();
+        for (auto entry : m_botMap) {
+            PlayerBot *bot = entry.second;
+            bot->Update();
+        }
+
+        uint32 endTime = getMSTime();
+        uint32 sleepTime = 500 - (endTime - startTime);
+        if (sleepTime < 0) {
+            sleepTime = 0;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime)); //This keeps from overworking the thread and updating the bot way too often if there aren't many bots
     }
 }
 
@@ -60,7 +79,8 @@ PlayerBot *PlayerBotManager::GetOfflineBot()
 bool PlayerBotManager::Initialize()
 {
     PlayerBot::SetUpSpells();
-    std::thread([this] { MainThread(); }).detach();
+    std::thread([this] { BotLoginThread(); }).detach();
+    std::thread([this] { BotUpdateThread(); }).detach();
     return true;
 }
 

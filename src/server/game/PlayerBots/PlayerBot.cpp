@@ -27,6 +27,18 @@ void PlayerBot::Login()
     }
     
     m_session->GetPlayer()->UpdateLocalChannels(m_session->GetPlayer()->GetZoneId()); //Join channels like 'General' and 'Trade'
+    m_lastUpdateTime = getMSTime();
+    m_lastPositionUpdate = getMSTime();
+}
+
+void PlayerBot::Update()
+{
+    Player *self = m_session->GetPlayer();
+
+    if (self->isMoving()) {
+        SendMovementHeartbeat();
+    }
+    m_lastUpdateTime = getMSTime();
 }
 
 void PlayerBot::TargetNearestPlayer()
@@ -112,8 +124,11 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "face") {
         FaceTarget();
     }
-    else if (message == "walk") {
-        WalkForward();
+    else if (message == "forward") {
+        StartWalkForward();
+    }
+    else if (message == "no") {
+        StopWalkingStraight();
     }
 }
 

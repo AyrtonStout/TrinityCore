@@ -30,7 +30,7 @@ void PlayerBot::FaceTarget()
     m_session->HandleMovementOpcodes(*packet);
 }
 
-void PlayerBot::WalkForward()
+void PlayerBot::StartWalkForward()
 {
     WorldPacket *packet = new WorldPacket(); 
     packet->SetOpcode(MSG_MOVE_START_FORWARD);
@@ -44,22 +44,23 @@ void PlayerBot::WalkForward()
     *packet << newPosition->PositionXYZOStream();
     *packet << (uint32) 0; // Fall Time
 
-    uint32 startTime = getMSTime();
+    m_lastPositionUpdate = getMSTime();
     m_session->HandleMovementOpcodes(*packet);
+}
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    uint32 endTime = getMSTime();
+void PlayerBot::SendMovementHeartbeat()
+{
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_HEARTBEAT);
 
-    uint32 elapsedTime = endTime - startTime;
+    Player *self = m_session->GetPlayer();
+    *packet << self->GetGUID().WriteAsPacked();
+    *packet << (uint32) self->GetUnitMovementFlags();
+    *packet << (uint16) self->GetExtraUnitMovementFlags();
+    *packet << (uint32) getMSTime();
 
     float moveSpeed = playerBaseMoveSpeed[MOVE_RUN];
-
-    WorldPacket *endPacket = new WorldPacket(); 
-    endPacket->SetOpcode(MSG_MOVE_STOP);
-    *endPacket << self->GetGUID().WriteAsPacked();
-    *endPacket << (uint32) MOVEMENTFLAG_NONE; //Flags1
-    *endPacket << (uint16) 0; //Flags2
-    *endPacket << (uint32) getMSTime(); //Time
+    uint32 elapsedTime = getMSTime() - m_lastPositionUpdate;
 
     float deltaX = cosf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
     float deltaY = sinf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
@@ -69,7 +70,38 @@ void PlayerBot::WalkForward()
     float newZ = self->GetMap()->GetHeight(newX, newY, self->GetPositionZ());
 
     Position *endPosition = new Position(newX, newY, newZ, self->GetOrientation());
-    *endPacket << endPosition->PositionXYZOStream();
-    *endPacket << (uint32) 0; // Fall Time
-    m_session->HandleMovementOpcodes(*endPacket);
+    *packet << endPosition->PositionXYZOStream();
+    *packet << (uint32) 0; // Fall Time
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StopWalkingStraight()
+{
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_STOP);
+
+    Player *self = m_session->GetPlayer();
+    *packet << self->GetGUID().WriteAsPacked();
+    *packet << (uint32) MOVEMENTFLAG_NONE; //Flags1
+    *packet << (uint16) 0; //Flags2
+    *packet << (uint32) getMSTime(); //Time
+
+    float moveSpeed = playerBaseMoveSpeed[MOVE_RUN];
+    uint32 elapsedTime = getMSTime() - m_lastPositionUpdate;
+
+    float deltaX = cosf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
+    float deltaY = sinf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
+
+    float newX = self->GetPositionX() + deltaX;
+    float newY = self->GetPositionY() + deltaY;
+    float newZ = self->GetMap()->GetHeight(newX, newY, self->GetPositionZ());
+
+    Position *endPosition = new Position(newX, newY, newZ, self->GetOrientation());
+    *packet << endPosition->PositionXYZOStream();
+    *packet << (uint32) 0; // Fall Time
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
 }

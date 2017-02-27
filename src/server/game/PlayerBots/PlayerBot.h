@@ -17,6 +17,7 @@ public:
     static void SetUpSpells();
 
     void Login();
+    void Update();
 
     void SendChat(ChatMsg chatType, std::string chatMessage);
     void SendWhisper(std::string target, std::string chatMessage);
@@ -43,7 +44,9 @@ public:
 
     void CastSpell(PlayerBotSpell spell);
 
-    void WalkForward();
+    void StartWalkForward();
+    void StopWalkingStraight(); //This means to stop walking forward, OR stop backpedaling
+    void SendMovementHeartbeat(); //If the bot is moving and hasn't changed direction in the last second, it needs to broadcast a heartbeat packet
 
     uint64 GetGuid() { return m_playerGuid; }
 
@@ -51,6 +54,8 @@ private:
     uint64 m_playerGuid;
     uint32 m_accountId;
     WorldSession* m_session;
+    uint32 m_lastUpdateTime;
+    uint32 m_lastPositionUpdate;
 
     static std::map<PlayerBotSpell, SpellDescriptor> m_spellLookup;
 
