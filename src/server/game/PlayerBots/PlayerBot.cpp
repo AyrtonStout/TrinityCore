@@ -125,7 +125,10 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
         FaceTarget();
     }
     else if (message == "forward") {
-        StartWalkForward();
+        StartWalkingForward();
+    }
+    else if (message == "backward") {
+        StartWalkingBackward();
     }
     else if (message == "no") {
         StopWalkingStraight();

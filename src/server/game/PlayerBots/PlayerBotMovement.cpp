@@ -1,5 +1,65 @@
 #include "PlayerBot.h"
 
+///TODO This needs to be expanded to include swimming and flying movement types
+float PlayerBot::GetSpeed()
+{
+    Player *self = m_session->GetPlayer();
+    uint32 movementFlags = self->GetUnitMovementFlags();
+
+    UnitMoveType moveType;
+    //If you're walking you move the same speed forward and backwards
+    if (movementFlags & MOVEMENTFLAG_WALKING) {
+        moveType = MOVE_WALK;
+    } //You move slower backpedaling than running
+    else if (movementFlags & MOVEMENTFLAG_BACKWARD) {
+        moveType = MOVE_RUN_BACK;
+    } 
+    else {
+        moveType = MOVE_RUN;
+    }
+
+    return self->GetSpeed(moveType);
+}
+
+Position* PlayerBot::CalculatePosition(float orientation /* NAN */)
+{
+    Player *self = m_session->GetPlayer();
+
+    orientation = !std::isnan(orientation) ? orientation : self->GetOrientation();
+    if (!self->isMoving()) {
+        return new Position(self->GetPositionX(), self->GetPositionY(), self->GetPositionZ(), orientation);
+    }
+
+    float moveSpeed = GetSpeed();
+    uint32 elapsedTime = getMSTime() - m_lastPositionUpdate;
+
+    float deltaX = cosf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
+    float deltaY = sinf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
+
+    //If we are moving backwards, make the values negative
+    if (self->GetUnitMovementFlags() & MOVEMENTFLAG_BACKWARD) {
+        deltaX *= -1;
+        deltaY *= -1;
+    }
+
+    float newX = self->GetPositionX() + deltaX;
+    float newY = self->GetPositionY() + deltaY;
+    float newZ = self->GetMap()->GetHeight(newX, newY, self->GetPositionZ());
+
+    return new Position(newX, newY, newZ, orientation);
+}
+
+void PlayerBot::BuildMovementPacket(WorldPacket *packet, uint32 movementFlags, float orientation /* NAN */)
+{
+    Player *self = m_session->GetPlayer();
+    *packet << self->GetGUID().WriteAsPacked();
+    *packet << (uint32) movementFlags; //Flags1
+    *packet << (uint16) self->GetExtraUnitMovementFlags(); //Flags2
+    *packet << (uint32) getMSTime(); //Time
+    *packet << CalculatePosition(orientation)->PositionXYZOStream();
+    *packet << (uint32) 0; // Fall Time
+}
+
 void PlayerBot::FaceTarget()
 {
     Unit *target = m_session->GetPlayer()->GetSelectedUnit();
@@ -17,32 +77,36 @@ void PlayerBot::FaceTarget()
 
     WorldPacket *packet = new WorldPacket();
     packet->SetOpcode(MSG_MOVE_SET_FACING);
-    *packet << self->GetGUID().WriteAsPacked();
-    *packet << (uint32) 0; //Flags1 
-                           ///Search for MOVEMENTFLAG if these need to be set in the future
-    *packet << (uint16) 0; //Flags2 
-                           ///Search for MOVEMENTFLAG2 if these need to be set in the future
-                           ///(TODO If the bot is swimming these flags will need to be set, and we will need to insert the pitch of the bot)
-    *packet << (uint32) getMSTime(); //Time
-    Position *newPosition = new Position(self->GetPositionX(), self->GetPositionY(), self->GetPositionZ(), angle);
-    *packet << newPosition->PositionXYZOStream();
-    *packet << (uint32) 0; // Fall Time
+
+    BuildMovementPacket(packet, self->GetUnitMovementFlags(), angle);
+
+    m_lastPositionUpdate = getMSTime();
     m_session->HandleMovementOpcodes(*packet);
 }
 
-void PlayerBot::StartWalkForward()
+void PlayerBot::StartWalkingForward()
 {
     WorldPacket *packet = new WorldPacket(); 
     packet->SetOpcode(MSG_MOVE_START_FORWARD);
 
     Player *self = m_session->GetPlayer();
-    *packet << self->GetGUID().WriteAsPacked();
-    *packet << (uint32) MOVEMENTFLAG_FORWARD; //Flags1
-    *packet << (uint16) 0; //Flags2
-    *packet << (uint32) getMSTime(); //Time
-    Position *newPosition = new Position(self->GetPositionX(), self->GetPositionY(), self->GetPositionZ(), self->GetOrientation());
-    *packet << newPosition->PositionXYZOStream();
-    *packet << (uint32) 0; // Fall Time
+    uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_FORWARD;
+    movementFlags = movementFlags & ~MOVEMENTFLAG_BACKWARD; //If we were walking backward, remove that flag
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StartWalkingBackward()
+{
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_START_BACKWARD);
+
+    Player *self = m_session->GetPlayer();
+    uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_BACKWARD;
+    movementFlags = movementFlags & ~MOVEMENTFLAG_FORWARD; //If we were walking forward, remove that flag
+    BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
     m_session->HandleMovementOpcodes(*packet);
@@ -54,24 +118,7 @@ void PlayerBot::SendMovementHeartbeat()
     packet->SetOpcode(MSG_MOVE_HEARTBEAT);
 
     Player *self = m_session->GetPlayer();
-    *packet << self->GetGUID().WriteAsPacked();
-    *packet << (uint32) self->GetUnitMovementFlags();
-    *packet << (uint16) self->GetExtraUnitMovementFlags();
-    *packet << (uint32) getMSTime();
-
-    float moveSpeed = playerBaseMoveSpeed[MOVE_RUN];
-    uint32 elapsedTime = getMSTime() - m_lastPositionUpdate;
-
-    float deltaX = cosf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
-    float deltaY = sinf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
-
-    float newX = self->GetPositionX() + deltaX;
-    float newY = self->GetPositionY() + deltaY;
-    float newZ = self->GetMap()->GetHeight(newX, newY, self->GetPositionZ());
-
-    Position *endPosition = new Position(newX, newY, newZ, self->GetOrientation());
-    *packet << endPosition->PositionXYZOStream();
-    *packet << (uint32) 0; // Fall Time
+    BuildMovementPacket(packet, self->GetUnitMovementFlags());
 
     m_lastPositionUpdate = getMSTime();
     m_session->HandleMovementOpcodes(*packet);
@@ -83,24 +130,11 @@ void PlayerBot::StopWalkingStraight()
     packet->SetOpcode(MSG_MOVE_STOP);
 
     Player *self = m_session->GetPlayer();
-    *packet << self->GetGUID().WriteAsPacked();
-    *packet << (uint32) MOVEMENTFLAG_NONE; //Flags1
-    *packet << (uint16) 0; //Flags2
-    *packet << (uint32) getMSTime(); //Time
 
-    float moveSpeed = playerBaseMoveSpeed[MOVE_RUN];
-    uint32 elapsedTime = getMSTime() - m_lastPositionUpdate;
+    uint32 movementFlags = self->GetUnitMovementFlags();
+    movementFlags = movementFlags & ~(MOVEMENTFLAG_FORWARD | MOVEMENTFLAG_BACKWARD); //Remove these flags from movementFlags
 
-    float deltaX = cosf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
-    float deltaY = sinf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
-
-    float newX = self->GetPositionX() + deltaX;
-    float newY = self->GetPositionY() + deltaY;
-    float newZ = self->GetMap()->GetHeight(newX, newY, self->GetPositionZ());
-
-    Position *endPosition = new Position(newX, newY, newZ, self->GetOrientation());
-    *packet << endPosition->PositionXYZOStream();
-    *packet << (uint32) 0; // Fall Time
+    BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
     m_session->HandleMovementOpcodes(*packet);
