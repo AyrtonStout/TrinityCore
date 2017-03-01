@@ -21,20 +21,51 @@ float PlayerBot::GetSpeed()
     return self->GetSpeed(moveType);
 }
 
-Position* PlayerBot::CalculatePosition(float orientation /* NAN */)
+float PlayerBot::GetEffectiveOrientation()
+{
+    Player *self = m_session->GetPlayer();
+    float effectiveOrientation = self->GetOrientation();
+    uint32 movementFlags = self->GetUnitMovementFlags();
+    if (movementFlags & MOVEMENTFLAG_STRAFE_LEFT) {
+        if (movementFlags & MOVEMENTFLAG_FORWARD) {
+            effectiveOrientation += (float) M_PI_4;
+        }
+        else if (movementFlags & MOVEMENTFLAG_BACKWARD) {
+            effectiveOrientation -= (float) M_PI_4;
+        }
+        else {
+            effectiveOrientation += (float) M_PI_2;
+        }
+    }
+    else if (movementFlags & MOVEMENTFLAG_STRAFE_RIGHT) {
+        if (movementFlags & MOVEMENTFLAG_FORWARD) {
+            effectiveOrientation -= (float) M_PI_4;
+        }
+        else if (movementFlags & MOVEMENTFLAG_BACKWARD) {
+            effectiveOrientation += (float) M_PI_4;
+        }
+        else {
+            effectiveOrientation -= (float) M_PI_2;
+        }
+    }
+    return effectiveOrientation;
+}
+
+Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
 {
     Player *self = m_session->GetPlayer();
 
-    orientation = !std::isnan(orientation) ? orientation : self->GetOrientation();
+    newOrientation = !std::isnan(newOrientation) ? newOrientation : self->GetOrientation();
     if (!self->isMoving()) {
-        return new Position(self->GetPositionX(), self->GetPositionY(), self->GetPositionZ(), orientation);
+        return new Position(self->GetPositionX(), self->GetPositionY(), self->GetPositionZ(), newOrientation);
     }
 
     float moveSpeed = GetSpeed();
     uint32 elapsedTime = getMSTime() - m_lastPositionUpdate;
 
-    float deltaX = cosf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
-    float deltaY = sinf(self->GetOrientation()) * moveSpeed * (elapsedTime / 1000.0);
+    float effectiveOrientation = GetEffectiveOrientation();
+    float deltaX = cosf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
+    float deltaY = sinf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
 
     //If we are moving backwards, make the values negative
     if (self->GetUnitMovementFlags() & MOVEMENTFLAG_BACKWARD) {
@@ -46,7 +77,7 @@ Position* PlayerBot::CalculatePosition(float orientation /* NAN */)
     float newY = self->GetPositionY() + deltaY;
     float newZ = self->GetMap()->GetHeight(newX, newY, self->GetPositionZ());
 
-    return new Position(newX, newY, newZ, orientation);
+    return new Position(newX, newY, newZ, newOrientation);
 }
 
 void PlayerBot::BuildMovementPacket(WorldPacket *packet, uint32 movementFlags, float orientation /* NAN */)
@@ -154,6 +185,50 @@ void PlayerBot::StopWalkingStraight()
 
     uint32 movementFlags = self->GetUnitMovementFlags();
     movementFlags = movementFlags & ~(MOVEMENTFLAG_FORWARD | MOVEMENTFLAG_BACKWARD); //Remove these flags from movementFlags
+
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StartStrafingLeft()
+{
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_START_STRAFE_LEFT);
+
+    Player *self = m_session->GetPlayer();
+    uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_STRAFE_LEFT;
+    movementFlags = movementFlags & ~MOVEMENTFLAG_STRAFE_RIGHT; //If we were strafing right, remove that flag
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StartStrafingRight()
+{
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_START_STRAFE_RIGHT);
+
+    Player *self = m_session->GetPlayer();
+    uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_STRAFE_RIGHT;
+    movementFlags = movementFlags & ~MOVEMENTFLAG_STRAFE_LEFT; //If we were strafing left, remove that flag
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StopStrafing()
+{
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_STOP_STRAFE);
+
+    Player *self = m_session->GetPlayer();
+
+    uint32 movementFlags = self->GetUnitMovementFlags();
+    movementFlags = movementFlags & ~(MOVEMENTFLAG_STRAFE_LEFT | MOVEMENTFLAG_STRAFE_RIGHT); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
 

@@ -47,6 +47,9 @@ public:
     void StartWalkingForward();
     void StartWalkingBackward();
     void StopWalkingStraight(); //This means to stop walking forward, OR stop backpedaling
+    void StartStrafingLeft();
+    void StartStrafingRight();
+    void StopStrafing();
     void SendMovementHeartbeat(); //If the bot is moving and hasn't changed direction in the last second, it needs to broadcast a heartbeat packet
     void RPWalk(bool rpWalk);
 
@@ -60,7 +63,8 @@ private:
     uint32 m_lastPositionUpdate;
 
     float GetSpeed();
-    Position* CalculatePosition(float orientation = NAN);
+    float GetEffectiveOrientation();
+    Position* CalculatePosition(float newOrientation = NAN);
     void BuildMovementPacket(WorldPacket* packet, uint32 MovementFlags, float orientation = NAN);
 
     static std::map<PlayerBotSpell, SpellDescriptor> m_spellLookup;

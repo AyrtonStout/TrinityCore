@@ -50,6 +50,7 @@ void PlayerBotManager::BotUpdateThread()
         uint32 endTime = getMSTime();
         uint32 sleepTime = 500 - (endTime - startTime);
         if (sleepTime < 0) {
+            TC_LOG_INFO("server", "Bot Update Thread can't keep up! Update finished " + std::to_string(sleepTime) + "ms too slow");
             sleepTime = 0;
         }
 

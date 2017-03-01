@@ -139,6 +139,15 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "rp walk off") {
         RPWalk(false);
     }
+    else if (message == "strafe left") {
+        StartStrafingLeft();
+    }
+    else if (message == "strafe right") {
+        StartStrafingRight();
+    }
+    else if (message == "noo") {
+        StopStrafing();
+    }
 }
 
 void PlayerBot::CastSpell(PlayerBotSpell spell)
