@@ -48,6 +48,7 @@ public:
     void StartWalkingBackward();
     void StopWalkingStraight(); //This means to stop walking forward, OR stop backpedaling
     void SendMovementHeartbeat(); //If the bot is moving and hasn't changed direction in the last second, it needs to broadcast a heartbeat packet
+    void RPWalk(bool rpWalk);
 
     uint64 GetGuid() { return m_playerGuid; }
 

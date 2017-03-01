@@ -133,6 +133,12 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "no") {
         StopWalkingStraight();
     }
+    else if (message == "rp walk on") {
+        RPWalk(true);
+    }
+    else if (message == "rp walk off") {
+        RPWalk(false);
+    }
 }
 
 void PlayerBot::CastSpell(PlayerBotSpell spell)

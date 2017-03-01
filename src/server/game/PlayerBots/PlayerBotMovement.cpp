@@ -84,6 +84,27 @@ void PlayerBot::FaceTarget()
     m_session->HandleMovementOpcodes(*packet);
 }
 
+void PlayerBot::RPWalk(bool rpWalk)
+{
+    Player *self = m_session->GetPlayer();
+
+    uint32 movementFlags;
+    WorldPacket *packet = new WorldPacket(); 
+    if (rpWalk) {
+        packet->SetOpcode(MSG_MOVE_SET_WALK_MODE);
+        movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_WALKING;
+    }
+    else {
+        packet->SetOpcode(MSG_MOVE_SET_RUN_MODE);
+        movementFlags = self->GetUnitMovementFlags() & ~MOVEMENTFLAG_WALKING; //If we were already walking, remove the flag
+    }
+
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
 void PlayerBot::StartWalkingForward()
 {
     WorldPacket *packet = new WorldPacket(); 
