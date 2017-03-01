@@ -148,6 +148,33 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "noo") {
         StopStrafing();
     }
+    else if (message.substr(0, 3) == "say") {
+        if (message.length() > 4) {
+            SendChat(CHAT_MSG_SAY, message.substr(4));
+        }
+    }
+    else if (message.substr(0, 4) == "yell") {
+        if (message.length() > 5) {
+            SendChat(CHAT_MSG_YELL, message.substr(5));
+        }
+    }
+    else if (message.substr(0, 7) == "whisper") {
+        if (message.length() > 8) {
+            std::string remainder = message.substr(8);
+            std::size_t firstIndex = remainder.find_first_of(" ");
+            std::string target = remainder.substr(0, firstIndex);
+
+            TC_LOG_INFO("server", target);
+
+            if (remainder.length() < firstIndex + 1) {
+                return;
+            }
+
+            std::string messageContent = remainder.substr(firstIndex + 1);
+            TC_LOG_INFO("server", messageContent);
+            SendWhisper(target, messageContent);
+        }
+    }
 }
 
 void PlayerBot::CastSpell(PlayerBotSpell spell)
