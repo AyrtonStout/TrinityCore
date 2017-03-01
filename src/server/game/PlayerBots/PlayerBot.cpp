@@ -164,14 +164,11 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
             std::size_t firstIndex = remainder.find_first_of(" ");
             std::string target = remainder.substr(0, firstIndex);
 
-            TC_LOG_INFO("server", target);
-
             if (remainder.length() < firstIndex + 1) {
                 return;
             }
 
             std::string messageContent = remainder.substr(firstIndex + 1);
-            TC_LOG_INFO("server", messageContent);
             SendWhisper(target, messageContent);
         }
     }
