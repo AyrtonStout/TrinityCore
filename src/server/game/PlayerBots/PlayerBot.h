@@ -28,6 +28,7 @@ public:
     void HandleChat(ChatMsg chatType, Language language, uint64 senderGuid, uint64 receiverGuid, std::string message, uint32 achievementId);
 
     void TargetNearestPlayer();
+    void TargetPlayerByName(std::string name);
     void TargetSelf();
 
     void FaceTarget();
