@@ -48,7 +48,7 @@ void PlayerBotManager::BotUpdateThread()
         }
 
         uint32 endTime = getMSTime();
-        uint32 sleepTime = 500 - (endTime - startTime);
+        uint32 sleepTime = 250 - (endTime - startTime);
         if (sleepTime < 0) {
             TC_LOG_INFO("server", "Bot Update Thread can't keep up! Update finished " + std::to_string(sleepTime) + "ms too slow");
             sleepTime = 0;
@@ -224,13 +224,13 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
             TC_LOG_INFO("server", "Spell 'Failure'");
             break;
         case 323:
-            TC_LOG_INFO("server", "Auto attack start");
+            //TC_LOG_INFO("server", "Auto attack start");
             break;
         case 324:
-            TC_LOG_INFO("server", "Auto attack stop");
+            //TC_LOG_INFO("server", "Auto attack stop");
             break;
         case 330:
-            TC_LOG_INFO("server", "Attack state update");
+            //TC_LOG_INFO("server", "Attack state update");
             break;
         case 334:
             TC_LOG_INFO("server", "Cancel combat");
@@ -321,6 +321,9 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
             break;
         case 1152:
             TC_LOG_INFO("server", "Power update");
+            break;
+        case 1155:
+            //TC_LOG_INFO("server", "Threat update");
             break;
         case 1173:
         case 1174:

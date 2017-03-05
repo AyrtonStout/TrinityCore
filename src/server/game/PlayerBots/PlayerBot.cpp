@@ -38,6 +38,15 @@ void PlayerBot::Update()
     if (self->isMoving()) {
         SendMovementHeartbeat();
     }
+
+    if (m_followingPlayer) {
+        UpdateFollowingPlayer();
+    } 
+
+    if (m_targetPoint) {
+        UpdatePointWalk();
+    }
+
     m_lastUpdateTime = getMSTime();
 }
 
@@ -93,7 +102,7 @@ Player* PlayerBot::GetNearestPlayer()
     Player* closestPlayer = NULL;
     for (Player* p : nearbyPlayers) {
         if (p->GetGUID() != self->GetGUID()) { 
-            float distance = self->GetDistance(p);
+            float distance = self->GetDistance(p->GetPosition());
             if (distance < minDistance) {
                 minDistance = distance;
                 closestPlayer = p;
@@ -166,6 +175,12 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     }
     else if (message == "noo") {
         StopStrafing();
+    }
+    else if (message == "follow") {
+        FollowPlayer(senderGuid);
+    }
+    else if (message == "stop following") {
+        StopFollowingPlayer();
     }
     else if (message.substr(0, 4) == "say ") {
         SendChat(CHAT_MSG_SAY, message.substr(4));

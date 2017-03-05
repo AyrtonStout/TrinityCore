@@ -32,6 +32,7 @@ public:
     void TargetSelf();
 
     void FaceTarget();
+    void FacePosition(Position p);
 
     void RequestDuel();
     void AcceptDuel();
@@ -54,6 +55,12 @@ public:
     void SendMovementHeartbeat(); //If the bot is moving and hasn't changed direction in the last second, it needs to broadcast a heartbeat packet
     void RPWalk(bool rpWalk);
 
+    void FollowPlayer(uint64 playerGuid);
+    void StopFollowingPlayer();
+    void UpdateFollowingPlayer();
+    void WalkToPoint(float x, float y, float z);
+    void WalkToPoint(Position p);
+
     uint64 GetGuid() { return m_playerGuid; }
 
 private:
@@ -62,13 +69,22 @@ private:
     WorldSession* m_session;
     uint32 m_lastUpdateTime;
     uint32 m_lastPositionUpdate;
+    G3D::Vector3* m_targetPoint = NULL;
+    Player* m_followingPlayer = NULL;
+
+    std::mutex m_pointWalkLock;
 
     float GetSpeed();
     float GetEffectiveOrientation();
     Position* CalculatePosition(float newOrientation = NAN);
     void BuildMovementPacket(WorldPacket* packet, uint32 MovementFlags, float orientation = NAN);
 
+    void UpdatePointWalk();
+
     static std::map<PlayerBotSpell, SpellDescriptor> m_spellLookup;
+
+    void GeneratePath(float x, float y, float z);
+    Position* GetIntermediatePoint(Position p); //This is used to get a point between the bot and the position
 
     std::string GetCurrentZoneName();
     Player* GetNearestPlayer();

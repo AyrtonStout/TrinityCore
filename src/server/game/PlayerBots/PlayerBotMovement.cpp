@@ -1,5 +1,7 @@
 #include "PlayerBot.h"
 
+constexpr float MIN_FOLLOW_DISTANCE = 1.3f;
+
 ///TODO This needs to be expanded to include swimming and flying movement types
 float PlayerBot::GetSpeed()
 {
@@ -102,9 +104,14 @@ void PlayerBot::FaceTarget()
     if (target->GetGUID() == self->GetGUID())
         return;
 
-    Position p = target->GetPosition();
+    FacePosition(target->GetPosition());
+}
 
-    float angle = m_session->GetPlayer()->GetAngle(p);
+void PlayerBot::FacePosition(Position p)
+{
+    Player *self = m_session->GetPlayer();
+
+    float angle = self->GetAngle(p);
 
     WorldPacket *packet = new WorldPacket();
     packet->SetOpcode(MSG_MOVE_SET_FACING);
@@ -234,4 +241,138 @@ void PlayerBot::StopStrafing()
 
     m_lastPositionUpdate = getMSTime();
     m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::FollowPlayer(uint64 playerGuid)
+{
+    Player *self = m_session->GetPlayer();
+    ObjectGuid *guid = new ObjectGuid(playerGuid);
+    Unit *target = ObjectAccessor::GetUnit(*self, *guid);
+    if (!target || target->GetTypeId() != TYPEID_PLAYER) {
+        return;
+    }
+
+    m_followingPlayer = (Player *) target;
+}
+
+void PlayerBot::UpdateFollowingPlayer()
+{
+    Player *self = m_session->GetPlayer();
+    m_pointWalkLock.lock();
+
+    float distance = self->GetDistance(m_followingPlayer->GetPosition());
+    if (distance > self->GetVisibilityRange()) {
+        delete m_targetPoint;
+        m_targetPoint = NULL;
+        m_followingPlayer = NULL;
+        StopWalkingStraight();
+        m_pointWalkLock.unlock();
+        return;
+    }
+    m_pointWalkLock.unlock();
+    if (distance > MIN_FOLLOW_DISTANCE) {
+        Position *offsetPosition = GetIntermediatePoint(m_followingPlayer->GetPosition());
+        WalkToPoint(*offsetPosition);
+        delete offsetPosition;
+    }
+}
+
+void PlayerBot::StopFollowingPlayer()
+{
+    Player *self = m_session->GetPlayer();
+    m_pointWalkLock.lock();
+
+    m_followingPlayer = NULL;
+    if (m_targetPoint) {
+        delete m_targetPoint;
+        m_targetPoint = NULL;
+    }
+    m_targetPoint = NULL;
+
+    m_pointWalkLock.unlock();
+
+    StopWalkingStraight();
+}
+
+void PlayerBot::UpdatePointWalk()
+{
+    Player *self = m_session->GetPlayer();
+    m_pointWalkLock.lock();
+    if (!m_targetPoint) {
+        m_pointWalkLock.unlock();
+        return;
+    }
+
+    float distance = self->GetDistance(m_targetPoint->x, m_targetPoint->y, m_targetPoint->z);
+
+    if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
+        delete m_targetPoint;
+        m_targetPoint = NULL;
+        StopWalkingStraight();
+    }
+    m_pointWalkLock.unlock();
+}
+
+void PlayerBot::WalkToPoint(float x, float y, float z)
+{
+    WalkToPoint(Position(x, y, z));
+}
+
+void PlayerBot::WalkToPoint(Position p)
+{
+    Player *self = m_session->GetPlayer();
+
+    GetIntermediatePoint(p);
+    m_pointWalkLock.lock();
+    float distance = self->GetDistance(p);
+    if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
+        m_pointWalkLock.unlock();
+        return;
+    }
+
+    FacePosition(p);
+    if ((self->GetUnitMovementFlags() & MOVEMENTFLAG_FORWARD) != MOVEMENTFLAG_FORWARD) {
+        StartWalkingForward();
+    }
+
+    if (m_targetPoint) {
+        delete m_targetPoint;
+    }
+
+    m_targetPoint = new G3D::Vector3(p);
+    m_pointWalkLock.unlock();
+}
+
+Position* PlayerBot::GetIntermediatePoint(Position p)
+{
+    Player *self = m_session->GetPlayer();
+    float distance = self->GetDistance(p);
+
+    float distanceRatio = 0.4f;
+    float newX = ((1 - distanceRatio) * p.GetPositionX() + (distanceRatio * self->GetPositionX()));
+    float newY = ((1 - distanceRatio) * p.GetPositionY() + (distanceRatio * self->GetPositionY()));
+
+    return new Position(newX, newY, p.GetPositionZ());
+}
+
+///TODO Use this for smart pathfinding
+void PlayerBot::GeneratePath(float x, float y, float z)
+{
+    Player *self = m_session->GetPlayer();
+    PathGenerator *generator = new PathGenerator(self);
+    bool success = generator->CalculatePath(x, y, z);
+    if (success) {
+        TC_LOG_INFO("server", "Great Success");
+    }
+    else {
+        TC_LOG_INFO("server", "Great Failure");
+    }
+
+    Movement::PointsArray pathPoints = generator->GetPath();
+
+    for (auto &point : pathPoints) {
+        TC_LOG_INFO("server", "X: " + std::to_string(point.x));
+        TC_LOG_INFO("server", "Y: " + std::to_string(point.y));
+        TC_LOG_INFO("server", "Z: " + std::to_string(point.z));
+    }
 }
