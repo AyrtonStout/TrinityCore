@@ -279,7 +279,6 @@ void PlayerBot::UpdateFollowingPlayer()
 
 void PlayerBot::StopFollowingPlayer()
 {
-    Player *self = m_session->GetPlayer();
     m_pointWalkLock.lock();
 
     m_followingPlayer = NULL;
@@ -346,7 +345,6 @@ void PlayerBot::WalkToPoint(Position p)
 Position* PlayerBot::GetIntermediatePoint(Position p)
 {
     Player *self = m_session->GetPlayer();
-    float distance = self->GetDistance(p);
 
     float distanceRatio = 0.4f;
     float newX = ((1 - distanceRatio) * p.GetPositionX() + (distanceRatio * self->GetPositionX()));
