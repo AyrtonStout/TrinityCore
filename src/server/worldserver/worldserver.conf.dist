@@ -3225,10 +3225,13 @@ AuctionHouseBot.BuyPrice.Seller = 1
 
 #
 #    AuctionHouseBot.BuyPrice.Variance
-#       Description: The randomness involved in calculating the final BuyPrice for an item
-#       Default:     0.04
+#       Description: The randomness involved in calculating the final BuyPrice for an item.
+#                    This uses standard deviation to calculate the multiplier of the buyout price.
+#       Default:     1.00 (Mean)
+#                    0.15 (Sigma)
 
-AuctionHouseBot.BuyPrice.Variance = 0.04
+AuctionHouseBot.BuyPrice.Mean = 1.00
+AuctionHouseBot.BuyPrice.Sigma = 0.10
 
 #    AuctionHouseBot.BidPrice.*
 #       Description: These values determine the range that the Bid Price will fall into, as a percentage of the Buy Price
