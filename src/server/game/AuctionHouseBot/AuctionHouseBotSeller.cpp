@@ -708,8 +708,8 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
     uint32 qualityRatio = config.GetPriceRatioPerQuality(AuctionQuality(itemProto->Quality));
     float priceRatio = (classRatio * qualityRatio) / 10000.0f;
 
-    float buyPrice = itemProto->BuyPrice;
-    float sellPrice = itemProto->SellPrice;
+    float buyPrice = (float) itemProto->BuyPrice;
+    float sellPrice = (float) itemProto->SellPrice;
 
     if (buyPrice == 0)
     {
@@ -758,22 +758,19 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
         basePriceFloat *= sAuctionBotConfig->GetConfig(CONFIG_AHBOT_MISCITEM_PRICE);
     }
 
-    float range = basePriceFloat * sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BUYPRICE_VARIANCE);
-
-    buyp = static_cast<uint32>(frand(basePriceFloat - range, basePriceFloat + range) + 0.5f);
-    if (buyp == 0)
-        buyp = 1;
-
-    float distributionMean = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MEAN);
-    float distributionSigma = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_SIGMA);
+    float distributionMean = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BUYPRICE_MEAN);
+    float distributionSigma = sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BUYPRICE_SIGMA);
     std::normal_distribution<double> distribution(distributionMean, distributionSigma);
 
     double priceVariance = distribution(_randGenerator);
-    bidp = static_cast<uint32>(priceVariance * buyp);
-    /*
+    buyp = static_cast<uint32>(priceVariance * basePriceFloat);
+
+    if (buyp == 0)
+        buyp = 1;
+
     float bidPercentage = frand(sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MIN), sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MAX));
     bidp = static_cast<uint32>(bidPercentage * buyp);
-    */
+
     if (bidp == 0)
         bidp = 1;
 }
