@@ -61,6 +61,11 @@ public:
     void WalkToPoint(float x, float y, float z);
     void WalkToPoint(Position p);
 
+    void InviteToParty();
+    void InviteToParty(std::string playerName);
+    void AcceptPartyInvite();
+    void DeclinePartyInvite();
+
     uint64 GetGuid() { return m_playerGuid; }
 
 private:

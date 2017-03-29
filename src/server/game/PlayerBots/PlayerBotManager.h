@@ -22,6 +22,7 @@ private:
 
     void HandleChatPacket(WorldPacket *packet, uint64 botGuid);
     void HandleDuelRequest(WorldPacket *packet, uint64 botGuid);
+    void HandlePartyRequest(WorldPacket *packet, uint64 botGuid);
 
     PlayerBot *GetOfflineBot();
 

@@ -119,6 +119,12 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
         TargetNearestPlayer();
         RequestDuel();
     }
+    else if (message == "party?") {
+        InviteToParty();
+    }
+    else if (message.substr(0, 6) == "party ") {
+        InviteToParty(message.substr(6));
+    }
     else if (message == "attack") {
         StartAttack();
     }

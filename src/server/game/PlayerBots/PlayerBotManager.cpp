@@ -141,6 +141,27 @@ void PlayerBotManager::HandleDuelRequest(WorldPacket *packet, uint64 botGuid)
     TC_LOG_INFO("server", "Bot was challenged to a duel but never was flagged as being in a duel");
 }
 
+void PlayerBotManager::HandlePartyRequest(WorldPacket *packet, uint64 botGuid)
+{
+    packet->read_skip<uint8>();
+
+    std::string inviter;
+    *packet >> inviter;
+
+    PlayerBot *bot = m_botMap[botGuid];
+    if (!bot)
+        return;
+
+    srand(time(NULL));
+    uint8 accept = rand() % 2;
+    if (accept) {
+        bot->AcceptPartyInvite();
+    }
+    else {
+        bot->DeclinePartyInvite();
+    }
+}
+
 void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
 {
     if (!packet)
@@ -153,6 +174,16 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
             break;
         case 103:
             TC_LOG_INFO("server", "Contact list");
+            break;
+        case 111:
+            HandlePartyRequest(packet, botGuid);
+            TC_LOG_INFO("server", "Received group invite");
+            break;
+        case 125:
+            TC_LOG_INFO("server", "Party member list");
+            break;
+        case 127:
+            TC_LOG_INFO("server", "Party command result");
             break;
         case 150: //Can be whisper or channel or say or yell or anything really
             HandleChatPacket(packet, botGuid);
@@ -181,7 +212,7 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
         case 195: //Movement set walk mode
         case 201: //Fall land
         case 218: //Set facing
-            TC_LOG_INFO("server", "Movement animation");
+            //TC_LOG_INFO("server", "Movement animation");
             break;
         case 221:
             //TC_LOG_INFO("server", "Monster moved");
@@ -193,7 +224,7 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
             TC_LOG_INFO("server", "Force movement unroot");
             break;
         case 238:
-            TC_LOG_INFO("server", "Movement heartbeat");
+            //TC_LOG_INFO("server", "Movement heartbeat");
             break;
         case 253:
             TC_LOG_INFO("server", "Tutorial Flags");
