@@ -48,6 +48,9 @@ public:
 
     void StartWalkingForward();
     void StartWalkingBackward();
+    void StartTurningLeft();
+    void StartTurningRight();
+    void StopTurning();
     void StopWalkingStraight(); //This means to stop walking forward, OR stop backpedaling
     void StartStrafingLeft();
     void StartStrafingRight();

@@ -58,16 +58,50 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
     Player *self = m_session->GetPlayer();
 
     newOrientation = !std::isnan(newOrientation) ? newOrientation : self->GetOrientation();
-    if (!self->isMoving()) {
+    if (!self->isMoving() && !self->isTurning()) {
         return new Position(self->GetPositionX(), self->GetPositionY(), self->GetPositionZ(), newOrientation);
     }
 
     float moveSpeed = GetSpeed();
+    float turnSpeed = (self->isMoving()) ? 2650 : 2000; //Number of milliseconds it takes to rotate 360 degrees
+
     uint32 elapsedTime = getMSTime() - m_lastPositionUpdate;
 
     float effectiveOrientation = GetEffectiveOrientation();
-    float deltaX = cosf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
-    float deltaY = sinf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
+
+    float orientationChange;
+    if (self->isTurning()) {
+        orientationChange = (M_PI * 2) * (elapsedTime / turnSpeed);
+        if (self->GetUnitMovementFlags() & MOVEMENTFLAG_LEFT) {
+            newOrientation += orientationChange;
+            //effectiveOrientation += orientationChange;
+        }
+        else {
+            newOrientation -= orientationChange;
+            //effectiveOrientation -= orientationChange;
+        }
+    }
+
+
+    float deltaX, deltaY;
+    if (self->isMoving()) {
+        if (self->isTurning()) {
+            //effectiveOrientation += M_PI_2;
+            float offset = fmod(effectiveOrientation + M_PI_2, 2 * M_PI);
+            float radius = (moveSpeed * (turnSpeed / 1000)) / (2 * M_PI);
+            float distance = 2 * sinf(orientationChange / 2) * radius * 1.1;
+            deltaX = cosf(orientationChange / 2.0 + offset) * distance; ///TODO maybe make this negative
+        	deltaY = sinf(orientationChange / 2.0 + offset) * distance; ///TODO maybe make this negative
+        }
+        else {
+            deltaX = cosf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
+            deltaY = sinf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
+        }
+    }
+    else {
+        deltaX = 0;
+        deltaY = 0;
+    }
 
     //If we are moving backwards, make the values negative
     if (self->GetUnitMovementFlags() & MOVEMENTFLAG_BACKWARD) {
@@ -236,6 +270,54 @@ void PlayerBot::StopStrafing()
 
     uint32 movementFlags = self->GetUnitMovementFlags();
     movementFlags = movementFlags & ~(MOVEMENTFLAG_STRAFE_LEFT | MOVEMENTFLAG_STRAFE_RIGHT); //Remove these flags from movementFlags
+
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StartTurningLeft()
+{
+    WorldPacket *packet = new WorldPacket();
+    packet->SetOpcode(MSG_MOVE_START_TURN_LEFT);
+
+    Player *self = m_session->GetPlayer();
+
+    uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_LEFT;
+    movementFlags = movementFlags & ~MOVEMENTFLAG_RIGHT; //If we were turning right, remove that flag
+
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StartTurningRight()
+{
+    WorldPacket *packet = new WorldPacket();
+    packet->SetOpcode(MSG_MOVE_START_TURN_RIGHT);
+
+    Player *self = m_session->GetPlayer();
+
+    uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_RIGHT;
+    movementFlags = movementFlags & ~MOVEMENTFLAG_LEFT; //If we were turning right, remove that flag
+
+    BuildMovementPacket(packet, movementFlags);
+
+    m_lastPositionUpdate = getMSTime();
+    m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StopTurning()
+{
+    WorldPacket *packet = new WorldPacket();
+    packet->SetOpcode(MSG_MOVE_STOP_TURN);
+
+    Player *self = m_session->GetPlayer();
+
+    uint32 movementFlags = self->GetUnitMovementFlags();
+    movementFlags = movementFlags & ~(MOVEMENTFLAG_LEFT | MOVEMENTFLAG_RIGHT); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
 

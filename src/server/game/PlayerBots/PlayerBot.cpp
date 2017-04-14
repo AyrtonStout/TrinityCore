@@ -179,8 +179,17 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "strafe right") {
         StartStrafingRight();
     }
-    else if (message == "noo") {
+    else if (message == "stop strafing") {
         StopStrafing();
+    }
+    else if (message == "turn left") {
+        StartTurningLeft();
+    }
+    else if (message == "turn right") {
+        StartTurningRight();
+    }
+    else if (message == "stop turning") {
+        StopTurning();
     }
     else if (message == "follow") {
         FollowPlayer(senderGuid);
