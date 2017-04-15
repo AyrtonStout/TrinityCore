@@ -219,12 +219,17 @@ void PlayerBot::SendMovementHeartbeat()
 
 void PlayerBot::StopWalkingStraight()
 {
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_STOP);
-
     Player *self = m_session->GetPlayer();
 
     uint32 movementFlags = self->GetUnitMovementFlags();
+
+    if ((movementFlags & (MOVEMENTFLAG_FORWARD | MOVEMENTFLAG_BACKWARD)) == 0) { //We aren't moving. Do nothing
+        return;
+    }
+
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_STOP);
+
     movementFlags = movementFlags & ~(MOVEMENTFLAG_FORWARD | MOVEMENTFLAG_BACKWARD); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
@@ -263,12 +268,16 @@ void PlayerBot::StartStrafingRight()
 
 void PlayerBot::StopStrafing()
 {
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_STOP_STRAFE);
-
     Player *self = m_session->GetPlayer();
 
     uint32 movementFlags = self->GetUnitMovementFlags();
+    if ((movementFlags & (MOVEMENTFLAG_STRAFE_LEFT | MOVEMENTFLAG_STRAFE_RIGHT)) == 0) { //We aren't moving. Do nothing
+        return;
+    }
+
+    WorldPacket *packet = new WorldPacket(); 
+    packet->SetOpcode(MSG_MOVE_STOP_STRAFE);
+
     movementFlags = movementFlags & ~(MOVEMENTFLAG_STRAFE_LEFT | MOVEMENTFLAG_STRAFE_RIGHT); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
@@ -311,18 +320,34 @@ void PlayerBot::StartTurningRight()
 
 void PlayerBot::StopTurning()
 {
-    WorldPacket *packet = new WorldPacket();
-    packet->SetOpcode(MSG_MOVE_STOP_TURN);
-
     Player *self = m_session->GetPlayer();
 
     uint32 movementFlags = self->GetUnitMovementFlags();
+    if ((movementFlags & (MOVEMENTFLAG_LEFT | MOVEMENTFLAG_RIGHT)) == 0) { //We aren't moving. Do nothing
+        return;
+    }
+
+    WorldPacket *packet = new WorldPacket();
+    packet->SetOpcode(MSG_MOVE_STOP_TURN);
+
     movementFlags = movementFlags & ~(MOVEMENTFLAG_LEFT | MOVEMENTFLAG_RIGHT); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
     m_session->HandleMovementOpcodes(*packet);
+}
+
+void PlayerBot::StopAllWalking()
+{
+    StopFollowingPlayer();
+    StopWalkingStraight();
+    StopStrafing();
+    StopTurning();
+    if (m_targetPoint) {
+        delete m_targetPoint;
+        m_targetPoint = NULL;
+    }
 }
 
 void PlayerBot::FollowPlayer(uint64 playerGuid)
@@ -363,6 +388,11 @@ void PlayerBot::StopFollowingPlayer()
 {
     m_pointWalkLock.lock();
 
+    if (!m_followingPlayer) {
+        m_pointWalkLock.unlock();
+        return;
+    }
+
     m_followingPlayer = NULL;
     if (m_targetPoint) {
         delete m_targetPoint;
@@ -375,13 +405,13 @@ void PlayerBot::StopFollowingPlayer()
     StopWalkingStraight();
 }
 
-void PlayerBot::UpdatePointWalk()
+bool PlayerBot::UpdatePointWalk()
 {
     Player *self = m_session->GetPlayer();
     m_pointWalkLock.lock();
     if (!m_targetPoint) {
         m_pointWalkLock.unlock();
-        return;
+        return false;
     }
 
     float distance = self->GetDistance(m_targetPoint->x, m_targetPoint->y, m_targetPoint->z);
@@ -389,17 +419,19 @@ void PlayerBot::UpdatePointWalk()
     if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
         delete m_targetPoint;
         m_targetPoint = NULL;
-        StopWalkingStraight();
+        m_pointWalkLock.unlock();
+        return true;
     }
     m_pointWalkLock.unlock();
+    return false;
 }
 
-void PlayerBot::WalkToPoint(float x, float y, float z)
+bool PlayerBot::WalkToPoint(float x, float y, float z)
 {
-    WalkToPoint(Position(x, y, z));
+    return WalkToPoint(Position(x, y, z));
 }
 
-void PlayerBot::WalkToPoint(Position p)
+bool PlayerBot::WalkToPoint(Position p)
 {
     Player *self = m_session->GetPlayer();
 
@@ -408,7 +440,7 @@ void PlayerBot::WalkToPoint(Position p)
     float distance = self->GetDistance(p);
     if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
         m_pointWalkLock.unlock();
-        return;
+        return false;
     }
 
     FacePosition(p);
@@ -422,6 +454,90 @@ void PlayerBot::WalkToPoint(Position p)
 
     m_targetPoint = new G3D::Vector3(p);
     m_pointWalkLock.unlock();
+    return true;
+}
+
+void PlayerBot::AddPatrolPoint(float x, float y, float z) 
+{
+    m_patrolLock.lock();
+    if (m_patrolPath == NULL) {
+        m_patrolPath = new std::vector<G3D::Vector3*>();
+    }
+    G3D::Vector3 *point = new G3D::Vector3(x, y, z);
+    m_patrolPath->push_back(point);
+    m_patrolLock.unlock();
+}
+
+void PlayerBot::ClearPatrol() 
+{
+    m_patrolLock.lock();
+    if (m_patrolPath == NULL) {
+        m_patrolLock.unlock();
+        return;
+    }
+
+    for (auto point : *m_patrolPath) {
+        delete point;
+    }
+    delete m_patrolPath;
+    m_patrolPath = NULL;
+
+    m_patrolLock.unlock();
+    StopPatrolling();
+}
+
+void PlayerBot::ResetPatrol() 
+{
+    StopPatrolling();
+
+    m_patrolLock.lock();
+    m_patrolIndex = 0;
+    m_patrolLock.unlock();
+}
+
+void PlayerBot::StartPatrolling() 
+{
+    m_patrolLock.lock();
+    if (!m_patrolPath || m_patrolPath->size() == 0) {
+        m_patrolLock.unlock();
+        TC_LOG_INFO("server", "There is no good patrol path. Aborting");
+        return;
+    }
+    if (m_patrolIndex >= m_patrolPath->size()) {
+        m_patrolIndex = 0;
+    }
+
+    m_isPatrolling = true;
+    m_patrolLock.unlock();
+}
+
+void PlayerBot::StopPatrolling() 
+{
+    StopAllWalking();
+
+    m_patrolLock.lock();
+    m_isPatrolling = false;
+    m_patrolLock.unlock();
+}
+
+void PlayerBot::UpdatePatrol()
+{
+    m_patrolLock.lock();
+    if (!m_patrolPath || m_patrolPath->size() == 0) {
+        TC_LOG_INFO("server", "No valid patrol path. Aborting");
+        m_patrolLock.unlock();
+        return;
+    }
+
+    if (m_patrolIndex >= m_patrolPath->size()) {
+        m_patrolIndex = 0;
+    }
+
+    G3D::Vector3 *point = m_patrolPath->at(m_patrolIndex);
+    if (!WalkToPoint(point->x, point->y, point->z)) {
+        m_patrolIndex++; //This happens if the bot is already standing on the point he needs to walk to. If this is the case, skip this point.
+    }
+    m_patrolLock.unlock();
 }
 
 Position* PlayerBot::GetIntermediatePoint(Position p)

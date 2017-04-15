@@ -41,10 +41,24 @@ void PlayerBot::Update()
 
     if (m_followingPlayer) {
         UpdateFollowingPlayer();
-    } 
+    }
 
+    bool pointWalkFinished = false;
     if (m_targetPoint) {
-        UpdatePointWalk();
+        pointWalkFinished = UpdatePointWalk();
+    }
+    else if (m_isPatrolling) {
+        UpdatePatrol(); //Player was told to patrol, but hasn't yet started to walk anywhere
+    }
+
+    if (pointWalkFinished) {
+        if (m_isPatrolling) {
+            m_patrolIndex++;
+            UpdatePatrol(); //Player finished walking to a point, and should walk to the next one
+        }
+        else {
+            StopWalkingStraight(); //Player has nowhere else to walk to, and should stop
+        }
     }
 
     m_lastUpdateTime = getMSTime();
@@ -214,6 +228,23 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
 
         std::string messageContent = remainder.substr(firstIndex + 1);
         SendWhisper(target, messageContent);
+    }
+    else if (message == "add patrol point") {
+        Player *sender = ObjectAccessor::FindPlayer(ObjectGuid(senderGuid));
+        Position position = sender->GetPosition();
+        AddPatrolPoint(position.GetPositionX(), position.GetPositionY(), position.GetPositionZ());
+    }
+    else if (message == "clear patrol") {
+        ClearPatrol();
+    }
+    else if (message == "stop patrolling") {
+        StopPatrolling();
+    }
+    else if (message == "start patrolling") {
+        StartPatrolling();
+    }
+    else if (message == "reset patrol") {
+        ResetPatrol();
     }
 }
 

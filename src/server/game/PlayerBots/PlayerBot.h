@@ -57,12 +57,19 @@ public:
     void StopStrafing();
     void SendMovementHeartbeat(); //If the bot is moving and hasn't changed direction in the last second, it needs to broadcast a heartbeat packet
     void RPWalk(bool rpWalk);
+    void StopAllWalking();
 
     void FollowPlayer(uint64 playerGuid);
     void StopFollowingPlayer();
     void UpdateFollowingPlayer();
-    void WalkToPoint(float x, float y, float z);
-    void WalkToPoint(Position p);
+    bool WalkToPoint(float x, float y, float z);
+    bool WalkToPoint(Position p);
+
+    void AddPatrolPoint(float x, float y, float z);
+    void ClearPatrol();
+    void StartPatrolling();
+    void StopPatrolling();
+    void ResetPatrol();
 
     void InviteToParty();
     void InviteToParty(std::string playerName);
@@ -77,6 +84,12 @@ private:
     WorldSession* m_session;
     uint32 m_lastUpdateTime;
     uint32 m_lastPositionUpdate;
+
+    std::vector<G3D::Vector3*> *m_patrolPath = NULL;
+    uint8 m_patrolIndex = 0;
+    bool m_isPatrolling = false;
+    std::mutex m_patrolLock;
+
     G3D::Vector3* m_targetPoint = NULL;
     Player* m_followingPlayer = NULL;
 
@@ -87,7 +100,8 @@ private:
     Position* CalculatePosition(float newOrientation = NAN);
     void BuildMovementPacket(WorldPacket* packet, uint32 MovementFlags, float orientation = NAN);
 
-    void UpdatePointWalk();
+    bool UpdatePointWalk();
+    void UpdatePatrol();
 
     static std::map<PlayerBotSpell, SpellDescriptor> m_spellLookup;
 
