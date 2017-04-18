@@ -407,6 +407,7 @@ void PlayerBot::StopFollowingPlayer()
 
 bool PlayerBot::UpdatePointWalk()
 {
+    TC_LOG_INFO("server", "Update Point Walk");
     Player *self = m_session->GetPlayer();
     m_pointWalkLock.lock();
     if (!m_targetPoint) {
@@ -433,6 +434,7 @@ bool PlayerBot::WalkToPoint(float x, float y, float z)
 
 bool PlayerBot::WalkToPoint(Position p)
 {
+    TC_LOG_INFO("server", "Walk to point");
     Player *self = m_session->GetPlayer();
 
     GetIntermediatePoint(p);
@@ -440,6 +442,7 @@ bool PlayerBot::WalkToPoint(Position p)
     float distance = self->GetDistance(p);
     if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
         m_pointWalkLock.unlock();
+        TC_LOG_INFO("server", "Exit walk to point 1");
         return false;
     }
 
@@ -454,11 +457,13 @@ bool PlayerBot::WalkToPoint(Position p)
 
     m_targetPoint = new G3D::Vector3(p);
     m_pointWalkLock.unlock();
+    TC_LOG_INFO("server", "Exit walk to point 2");
     return true;
 }
 
 void PlayerBot::AddPatrolPoint(float x, float y, float z) 
 {
+    TC_LOG_INFO("server", "Add Patrol");
     m_patrolLock.lock();
     if (m_patrolPath == NULL) {
         m_patrolPath = new std::vector<G3D::Vector3*>();
@@ -470,6 +475,7 @@ void PlayerBot::AddPatrolPoint(float x, float y, float z)
 
 void PlayerBot::ClearPatrol() 
 {
+    TC_LOG_INFO("server", "Clear Patrol");
     m_patrolLock.lock();
     if (m_patrolPath == NULL) {
         m_patrolLock.unlock();
@@ -488,6 +494,7 @@ void PlayerBot::ClearPatrol()
 
 void PlayerBot::ResetPatrol() 
 {
+    TC_LOG_INFO("server", "Reset Patrol");
     StopPatrolling();
 
     m_patrolLock.lock();
@@ -497,10 +504,12 @@ void PlayerBot::ResetPatrol()
 
 void PlayerBot::StartPatrolling() 
 {
+    TC_LOG_INFO("server", "Start Patrol");
     m_patrolLock.lock();
     if (!m_patrolPath || m_patrolPath->size() == 0) {
         m_patrolLock.unlock();
         TC_LOG_INFO("server", "There is no good patrol path. Aborting");
+        TC_LOG_INFO("server", "Exit Start patrol 1");
         return;
     }
     if (m_patrolIndex >= m_patrolPath->size()) {
@@ -509,10 +518,12 @@ void PlayerBot::StartPatrolling()
 
     m_isPatrolling = true;
     m_patrolLock.unlock();
+    TC_LOG_INFO("server", "Exit Start patrol");
 }
 
 void PlayerBot::StopPatrolling() 
 {
+    TC_LOG_INFO("server", "Stop Patrol");
     StopAllWalking();
 
     m_patrolLock.lock();
@@ -522,6 +533,7 @@ void PlayerBot::StopPatrolling()
 
 void PlayerBot::UpdatePatrol()
 {
+    TC_LOG_INFO("server", "Update Patrol");
     m_patrolLock.lock();
     if (!m_patrolPath || m_patrolPath->size() == 0) {
         TC_LOG_INFO("server", "No valid patrol path. Aborting");

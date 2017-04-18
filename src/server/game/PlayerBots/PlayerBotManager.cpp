@@ -358,7 +358,7 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
             break;
         case 1173:
         case 1174:
-            TC_LOG_INFO("server", "Aura update");
+            //TC_LOG_INFO("server", "Aura update");
             break;
         case 1195:
             TC_LOG_INFO("server", "Client cache version");
