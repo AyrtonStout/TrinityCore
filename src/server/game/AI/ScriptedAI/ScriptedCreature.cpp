@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -330,7 +330,7 @@ Unit* ScriptedAI::DoSelectLowestHpFriendly(float range, uint32 minHPDiff)
     Unit* unit = nullptr;
     Trinity::MostHPMissingInRange u_check(me, range, minHPDiff);
     Trinity::UnitLastSearcher<Trinity::MostHPMissingInRange> searcher(me, unit, u_check);
-    me->VisitNearbyObject(range, searcher);
+    Cell::VisitAllObjects(me, searcher, range);
 
     return unit;
 }
@@ -340,7 +340,7 @@ Unit* ScriptedAI::DoSelectBelowHpPctFriendlyWithEntry(uint32 entry, float range,
     Unit* unit = nullptr;
     Trinity::FriendlyBelowHpPctEntryInRange u_check(me, entry, range, minHPDiff, excludeSelf);
     Trinity::UnitLastSearcher<Trinity::FriendlyBelowHpPctEntryInRange> searcher(me, unit, u_check);
-    me->VisitNearbyObject(range, searcher);
+    Cell::VisitAllObjects(me, searcher, range);
 
     return unit;
 }
@@ -350,7 +350,7 @@ std::list<Creature*> ScriptedAI::DoFindFriendlyCC(float range)
     std::list<Creature*> list;
     Trinity::FriendlyCCedInRange u_check(me, range);
     Trinity::CreatureListSearcher<Trinity::FriendlyCCedInRange> searcher(me, list, u_check);
-    me->VisitNearbyObject(range, searcher);
+    Cell::VisitAllObjects(me, searcher, range);
 
     return list;
 }
@@ -360,7 +360,7 @@ std::list<Creature*> ScriptedAI::DoFindFriendlyMissingBuff(float range, uint32 u
     std::list<Creature*> list;
     Trinity::FriendlyMissingBuffInRange u_check(me, range, uiSpellid);
     Trinity::CreatureListSearcher<Trinity::FriendlyMissingBuffInRange> searcher(me, list, u_check);
-    me->VisitNearbyObject(range, searcher);
+    Cell::VisitAllObjects(me, searcher, range);
 
     return list;
 }
@@ -369,15 +369,9 @@ Player* ScriptedAI::GetPlayerAtMinimumRange(float minimumRange)
 {
     Player* player = nullptr;
 
-    CellCoord pair(Trinity::ComputeCellCoord(me->GetPositionX(), me->GetPositionY()));
-    Cell cell(pair);
-    cell.SetNoCreate();
-
     Trinity::PlayerAtMinimumRangeAway check(me, minimumRange);
     Trinity::PlayerSearcher<Trinity::PlayerAtMinimumRangeAway> searcher(me, player, check);
-    TypeContainerVisitor<Trinity::PlayerSearcher<Trinity::PlayerAtMinimumRangeAway>, GridTypeMapContainer> visitor(searcher);
-
-    cell.Visit(pair, visitor, *me->GetMap(), *me, minimumRange);
+    Cell::VisitWorldObjects(me, searcher, minimumRange);
 
     return player;
 }
@@ -513,7 +507,7 @@ void BossAI::UpdateAI(uint32 diff)
     DoMeleeAttackIfReady();
 }
 
-void BossAI::_DespawnAtEvade(uint32 delayToRespawn, Creature* who)
+void BossAI::_DespawnAtEvade(uint32 delayToRespawn /*= 30*/, Creature* who /*= nullptr*/)
 {
     if (delayToRespawn < 2)
     {

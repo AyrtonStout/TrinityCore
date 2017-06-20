@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 #include "GridReference.h"
 #include "ObjectDefines.h"
 #include "Map.h"
+#include "ModelIgnoreFlags.h"
 
 #include <set>
 #include <string>
@@ -41,11 +42,11 @@
 #define DEFAULT_VISIBILITY_INSTANCE 170.0f                  // default visible distance in instances, 170 yards
 #define DEFAULT_VISIBILITY_BGARENAS 533.0f                  // default visible distance in BG/Arenas, roughly 533 yards
 
-#define DEFAULT_WORLD_OBJECT_SIZE   0.388999998569489f      // player size, also currently used (correctly?) for any non Unit world objects
-#define DEFAULT_COMBAT_REACH        1.5f
-#define MIN_MELEE_REACH             2.0f
-#define NOMINAL_MELEE_RANGE         5.0f
-#define MELEE_RANGE                 (NOMINAL_MELEE_RANGE - MIN_MELEE_REACH * 2) //center to center for players
+#define DEFAULT_PLAYER_BOUNDING_RADIUS      0.388999998569489f     // player size, also currently used (correctly?) for any non Unit world objects
+#define DEFAULT_PLAYER_COMBAT_REACH         1.5f
+#define MIN_MELEE_REACH                     2.0f
+#define NOMINAL_MELEE_RANGE                 5.0f
+#define MELEE_RANGE                         (NOMINAL_MELEE_RANGE - MIN_MELEE_REACH * 2) //center to center for players
 
 enum TempSummonType
 {
@@ -148,7 +149,6 @@ class TC_GAME_API Object
         void ApplyModUInt64Value(uint16 index, int32 val, bool apply);
         void ApplyModPositiveFloatValue(uint16 index, float val, bool apply);
         void ApplyModSignedFloatValue(uint16 index, float val, bool apply);
-        void ApplyPercentModFloatValue(uint16 index, float val, bool apply);
 
         void SetFlag(uint16 index, uint32 newFlag);
         void RemoveFlag(uint16 index, uint32 oldFlag);
@@ -316,7 +316,7 @@ struct MovementInfo
     void AddExtraMovementFlag(uint16 flag) { flags2 |= flag; }
     bool HasExtraMovementFlag(uint16 flag) const { return (flags2 & flag) != 0; }
 
-    void SetFallTime(uint32 time) { fallTime = time; }
+    void SetFallTime(uint32 val) { fallTime = val; }
 
     void OutDebug();
 };
@@ -436,7 +436,8 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         virtual void Update (uint32 /*time_diff*/) { }
 
         void _Create(ObjectGuid::LowType guidlow, HighGuid guidhigh, uint32 phaseMask);
-        virtual void RemoveFromWorld() override;
+        void AddToWorld() override;
+        void RemoveFromWorld() override;
 
         void GetNearPoint2D(float &x, float &y, float distance, float absAngle) const;
         void GetNearPoint(WorldObject const* searcher, float &x, float &y, float &z, float searcher_size, float distance2d, float absAngle) const;
@@ -448,7 +449,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         Position GetRandomNearPosition(float radius);
         void GetContactPoint(WorldObject const* obj, float &x, float &y, float &z, float distance2d = CONTACT_DISTANCE) const;
 
-        float GetObjectSize() const;
+        virtual float GetCombatReach() const { return 0.0f; } // overridden (only) in Unit
         void UpdateGroundPositionZ(float x, float y, float &z) const;
         void UpdateAllowedPositionZ(float x, float y, float &z) const;
 
@@ -462,9 +463,9 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         bool InSamePhase(WorldObject const* obj) const;
         bool InSamePhase(uint32 phasemask) const { return (GetPhaseMask() & phasemask) != 0; }
 
-        uint32 GetZoneId() const;
-        uint32 GetAreaId() const;
-        void GetZoneAndAreaId(uint32& zoneid, uint32& areaid) const;
+        uint32 GetZoneId() const { return m_zoneId; }
+        uint32 GetAreaId() const { return m_areaId; }
+        void GetZoneAndAreaId(uint32& zoneid, uint32& areaid) const { zoneid = m_zoneId, areaid = m_areaId; }
 
         InstanceScript* GetInstanceScript();
 
@@ -488,9 +489,9 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         bool IsWithinDist2d(Position const* pos, float dist) const;
         // use only if you will sure about placing both object at same map
         bool IsWithinDist(WorldObject const* obj, float dist2compare, bool is3D = true) const;
-        bool IsWithinDistInMap(WorldObject const* obj, float dist2compare, bool is3D = true) const;
-        bool IsWithinLOS(float x, float y, float z) const;
-        bool IsWithinLOSInMap(WorldObject const* obj) const;
+        bool IsWithinDistInMap(WorldObject const* obj, float dist2compare, bool is3D = true, bool incOwnRadius = true, bool incTargetRadius = true) const;
+        bool IsWithinLOS(float x, float y, float z, LineOfSightChecks checks = LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags ignoreFlags = VMAP::ModelIgnoreFlags::Nothing) const;
+        bool IsWithinLOSInMap(WorldObject const* obj, LineOfSightChecks checks = LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags ignoreFlags = VMAP::ModelIgnoreFlags::Nothing) const;
         Position GetHitSpherePointFor(Position const& dest) const;
         void GetHitSpherePointFor(Position const& dest, float& x, float& y, float& z) const;
         bool GetDistanceOrder(WorldObject const* obj1, WorldObject const* obj2, bool is3D = true) const;
@@ -505,9 +506,9 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
 
         virtual void CleanupsBeforeDelete(bool finalCleanup = true);  // used in destructor or explicitly before mass creature delete to remove cross-references to already deleted units
 
-        virtual void SendMessageToSet(WorldPacket* data, bool self);
-        virtual void SendMessageToSetInRange(WorldPacket* data, float dist, bool self);
-        virtual void SendMessageToSet(WorldPacket* data, Player const* skipped_rcvr);
+        virtual void SendMessageToSet(WorldPacket const* data, bool self);
+        virtual void SendMessageToSetInRange(WorldPacket const* data, float dist, bool self);
+        virtual void SendMessageToSet(WorldPacket const* data, Player const* skipped_rcvr);
 
         virtual uint8 getLevelForTarget(WorldObject const* /*target*/) const { return 1; }
 
@@ -557,6 +558,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         Creature*   FindNearestCreature(uint32 entry, float range, bool alive = true) const;
         GameObject* FindNearestGameObject(uint32 entry, float range) const;
         GameObject* FindNearestGameObjectOfType(GameobjectTypes type, float range) const;
+        Player* SelectNearestPlayer(float distance) const;
 
         template <typename Container>
         void GetGameObjectListWithEntryInGrid(Container& gameObjectContainer, uint32 entry, float maxSearchRange = 250.0f) const;
@@ -573,6 +575,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         {
             UpdateObjectVisibility(true);
         }
+        void UpdatePositionData();
 
         void BuildUpdate(UpdateDataMapType&) override;
 
@@ -592,10 +595,6 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         void SetWorldObject(bool apply);
         bool IsPermanentWorldObject() const { return m_isWorldObject; }
         bool IsWorldObject() const;
-
-        template<class NOTIFIER> void VisitNearbyObject(float const& radius, NOTIFIER& notifier) const { if (IsInWorld()) GetMap()->VisitAll(GetPositionX(), GetPositionY(), radius, notifier); }
-        template<class NOTIFIER> void VisitNearbyGridObject(float const& radius, NOTIFIER& notifier) const { if (IsInWorld()) GetMap()->VisitGrid(GetPositionX(), GetPositionY(), radius, notifier); }
-        template<class NOTIFIER> void VisitNearbyWorldObject(float const& radius, NOTIFIER& notifier) const { if (IsInWorld()) GetMap()->VisitWorld(GetPositionX(), GetPositionY(), radius, notifier); }
 
         uint32  LastUsedScriptID;
 
@@ -617,6 +616,8 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         virtual float GetStationaryZ() const { return GetPositionZ(); }
         virtual float GetStationaryO() const { return GetOrientation(); }
 
+        float GetFloorZ() const;
+
     protected:
         std::string m_name;
         bool m_isActive;
@@ -625,6 +626,11 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
 
         // transports
         Transport* m_transport;
+
+        virtual void ProcessPositionDataChanged(PositionFullTerrainStatus const& data);
+        uint32 m_zoneId;
+        uint32 m_areaId;
+        float m_staticFloorZ;
 
         //these functions are used mostly for Relocate() and Corpse/Player specific stuff...
         //use them ONLY in LoadFromDB()/Create() funcs and nowhere else!
@@ -638,15 +644,15 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         //difference from IsAlwaysVisibleFor: 1. after distance check; 2. use owner or charmer as seer
         virtual bool IsAlwaysDetectableFor(WorldObject const* /*seer*/) const { return false; }
     private:
-        Map* m_currMap;                                    //current object's Map location
+        Map* m_currMap;                                   // current object's Map location
 
-        //uint32 m_mapId;                                     // object at map with map_id
-        uint32 m_InstanceId;                                // in map copy with instance id
-        uint32 m_phaseMask;                                 // in area phase state
+        //uint32 m_mapId;                                 // object at map with map_id
+        uint32 m_InstanceId;                              // in map copy with instance id
+        uint32 m_phaseMask;                               // in area phase state
 
         uint16 m_notifyflags;
         uint16 m_executed_notifies;
-        virtual bool _IsWithinDist(WorldObject const* obj, float dist2compare, bool is3D) const;
+        virtual bool _IsWithinDist(WorldObject const* obj, float dist2compare, bool is3D, bool incOwnRadius = true, bool incTargetRadius = true) const;
 
         bool CanNeverSee(WorldObject const* obj) const;
         virtual bool CanAlwaysSee(WorldObject const* /*obj*/) const { return false; }

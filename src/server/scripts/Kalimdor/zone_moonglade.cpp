@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -150,7 +150,7 @@ public:
             std::list<Player*> playerOnQuestList;
             Trinity::AnyPlayerInObjectRangeCheck checker(me, 5.0f);
             Trinity::PlayerListSearcher<Trinity::AnyPlayerInObjectRangeCheck> searcher(me, playerOnQuestList, checker);
-            me->VisitNearbyWorldObject(5.0f, searcher);
+            Cell::VisitWorldObjects(me, searcher, 5.0f);
             for (std::list<Player*>::const_iterator itr = playerOnQuestList.begin(); itr != playerOnQuestList.end(); ++itr)
             {
                 // Check if found player target has active quest

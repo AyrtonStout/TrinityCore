@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -81,7 +81,7 @@ class spell_love_is_in_the_air_romantic_picnic : public SpellScriptLoader
                 std::list<Player*> playerList;
                 Trinity::AnyPlayerInObjectRangeCheck checker(target, INTERACTION_DISTANCE*2);
                 Trinity::PlayerListSearcher<Trinity::AnyPlayerInObjectRangeCheck> searcher(target, playerList, checker);
-                target->VisitNearbyWorldObject(INTERACTION_DISTANCE*2, searcher);
+                Cell::VisitWorldObjects(target, searcher, INTERACTION_DISTANCE * 2);
                 for (std::list<Player*>::const_iterator itr = playerList.begin(); itr != playerList.end(); ++itr)
                 {
                     if ((*itr) != target && (*itr)->HasAura(GetId())) // && (*itr)->GetStandState() == UNIT_STAND_STATE_SIT)

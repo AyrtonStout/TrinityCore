@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -113,9 +113,9 @@ void OPvPCapturePoint::AddCre(uint32 type, ObjectGuid::LowType guid, uint32 entr
     m_CreatureTypes[m_Creatures[type]] = type;
 }
 
-bool OPvPCapturePoint::AddObject(uint32 type, uint32 entry, uint32 map, float x, float y, float z, float o, float rotation0, float rotation1, float rotation2, float rotation3)
+bool OPvPCapturePoint::AddObject(uint32 type, uint32 entry, uint32 map, Position const& pos, G3D::Quat const& rot)
 {
-    if (ObjectGuid::LowType guid = sObjectMgr->AddGOData(entry, map, x, y, z, o, 0, rotation0, rotation1, rotation2, rotation3))
+    if (ObjectGuid::LowType guid = sObjectMgr->AddGOData(entry, map, pos, rot, 0))
     {
         AddGO(type, guid, entry);
         return true;
@@ -124,9 +124,9 @@ bool OPvPCapturePoint::AddObject(uint32 type, uint32 entry, uint32 map, float x,
     return false;
 }
 
-bool OPvPCapturePoint::AddCreature(uint32 type, uint32 entry, uint32 map, float x, float y, float z, float o, TeamId /*teamId = TEAM_NEUTRAL*/, uint32 spawntimedelay /*= 0*/)
+bool OPvPCapturePoint::AddCreature(uint32 type, uint32 entry, uint32 map, Position const& pos, TeamId /*teamId = TEAM_NEUTRAL*/, uint32 spawntimedelay /*= 0*/)
 {
-    if (ObjectGuid::LowType guid = sObjectMgr->AddCreatureData(entry, map, x, y, z, o, spawntimedelay))
+    if (ObjectGuid::LowType guid = sObjectMgr->AddCreatureData(entry, map, pos, spawntimedelay))
     {
         AddCre(type, guid, entry);
         return true;
@@ -135,7 +135,7 @@ bool OPvPCapturePoint::AddCreature(uint32 type, uint32 entry, uint32 map, float 
     return false;
 }
 
-bool OPvPCapturePoint::SetCapturePointData(uint32 entry, uint32 map, float x, float y, float z, float o, float rotation0, float rotation1, float rotation2, float rotation3)
+bool OPvPCapturePoint::SetCapturePointData(uint32 entry, uint32 map, Position const& pos, G3D::Quat const& rot)
 {
     TC_LOG_DEBUG("outdoorpvp", "Creating capture point %u", entry);
 
@@ -147,7 +147,7 @@ bool OPvPCapturePoint::SetCapturePointData(uint32 entry, uint32 map, float x, fl
         return false;
     }
 
-    m_capturePointSpawnId = sObjectMgr->AddGOData(entry, map, x, y, z, o, 0, rotation0, rotation1, rotation2, rotation3);
+    m_capturePointSpawnId = sObjectMgr->AddGOData(entry, map, pos, rot, 0);
 
     if (m_capturePointSpawnId == 0)
         return false;
@@ -177,7 +177,7 @@ bool OPvPCapturePoint::DelCreature(uint32 type)
         ++itr;
         // Don't save respawn time
         c->SetRespawnTime(0);
-        c->RemoveCorpse();
+        c->DespawnOrUnsummon();
         c->AddObjectToRemoveList();
     }
 
@@ -329,7 +329,7 @@ bool OPvPCapturePoint::Update(uint32 diff)
     std::list<Player*> players;
     Trinity::AnyPlayerInObjectRangeCheck checker(m_capturePoint, radius);
     Trinity::PlayerListSearcher<Trinity::AnyPlayerInObjectRangeCheck> searcher(m_capturePoint, players, checker);
-    m_capturePoint->VisitNearbyWorldObject(radius, searcher);
+    Cell::VisitWorldObjects(m_capturePoint, searcher, radius);
 
     for (std::list<Player*>::iterator itr = players.begin(); itr != players.end(); ++itr)
     {

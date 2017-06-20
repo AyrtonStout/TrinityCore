@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -223,7 +223,7 @@ class ValithriaDespawner : public BasicEvent
         bool Execute(uint64 /*currTime*/, uint32 /*diff*/) override
         {
             Trinity::CreatureWorker<ValithriaDespawner> worker(_creature, *this);
-            _creature->VisitNearbyGridObject(333.0f, worker);
+            Cell::VisitGridObjects(_creature, worker, 333.0f);
             return true;
         }
 
@@ -262,7 +262,7 @@ class ValithriaDespawner : public BasicEvent
             creature->SetRespawnDelay(10);
 
             if (CreatureData const* data = creature->GetCreatureData())
-                creature->SetPosition(data->posX, data->posY, data->posZ, data->orientation);
+                creature->UpdatePosition(data->posX, data->posY, data->posZ, data->orientation);
             creature->DespawnOrUnsummon();
 
             creature->SetCorpseDelay(corpseDelay);
@@ -728,7 +728,7 @@ class npc_risen_archmage : public CreatureScript
                     std::list<Creature*> archmages;
                     RisenArchmageCheck check;
                     Trinity::CreatureListSearcher<RisenArchmageCheck> searcher(me, archmages, check);
-                    me->VisitNearbyGridObject(100.0f, searcher);
+                    Cell::VisitGridObjects(me, searcher, 100.0f);
                     for (std::list<Creature*>::iterator itr = archmages.begin(); itr != archmages.end(); ++itr)
                         (*itr)->AI()->DoAction(ACTION_ENTER_COMBAT);
 
@@ -1103,7 +1103,7 @@ class npc_dream_cloud : public CreatureScript
                             Player* player = nullptr;
                             Trinity::AnyPlayerInObjectRangeCheck check(me, 5.0f);
                             Trinity::PlayerSearcher<Trinity::AnyPlayerInObjectRangeCheck> searcher(me, player, check);
-                            me->VisitNearbyWorldObject(7.5f, searcher);
+                            Cell::VisitWorldObjects(me, searcher, 7.5f);
                             _events.ScheduleEvent(player ? EVENT_EXPLODE : EVENT_CHECK_PLAYER, 1000);
                             break;
                         }

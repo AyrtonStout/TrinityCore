@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +19,7 @@
  * Comment: Find in the future best timers and the event is not implemented.
  */
 
+#include "Containers.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "SpellScript.h"
@@ -945,9 +946,7 @@ class spell_gatewatcher_subboss_trigger : public SpellScriptLoader
                 if (!targetList.empty())
                 {
                     // If there are, pick one of them at random
-                    std::list<WorldObject*>::iterator it = targetList.begin();
-                    std::advance(it, urand(0, targetList.size() - 1));
-                    target = *it;
+                    target = Trinity::Containers::SelectRandomContainerElement(targetList);
                 }
                 // And hit only that one
                 targetList.clear();
@@ -1048,7 +1047,7 @@ class achievement_watch_him_die : public AchievementCriteriaScript
             if (!instance)
                 return false;
 
-            for (DataTypes watcherData : {DATA_WATCHER_GASHRA, DATA_WATCHER_NARJIL, DATA_WATCHER_SILTHIK})
+            for (ANDataTypes watcherData : {DATA_WATCHER_GASHRA, DATA_WATCHER_NARJIL, DATA_WATCHER_SILTHIK})
             {
                 if (Creature* watcher = instance->GetCreature(watcherData))
                     if (watcher->IsAlive())

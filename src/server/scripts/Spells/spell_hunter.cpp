@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -687,8 +687,8 @@ class spell_hun_lock_and_load : public SpellScriptLoader
                     return false;
 
                 // Do not proc on traps for immolation/explosive trap
-                DamageInfo* damageInfo = eventInfo.GetDamageInfo();
-                if (!damageInfo || !(damageInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_FROST))
+                SpellInfo const* spellInfo = eventInfo.GetSpellInfo();
+                if (!spellInfo || !(spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_FROST))
                     return false;
 
                 return roll_chance_i(aurEff->GetAmount());
@@ -915,7 +915,9 @@ class spell_hun_pet_carrion_feeder : public SpellScriptLoader
                 // search for nearby enemy corpse in range
                 Trinity::AnyDeadUnitSpellTargetInRangeCheck check(caster, max_range, GetSpellInfo(), TARGET_CHECK_ENEMY);
                 Trinity::WorldObjectSearcher<Trinity::AnyDeadUnitSpellTargetInRangeCheck> searcher(caster, result, check);
-                caster->GetMap()->VisitFirstFound(caster->m_positionX, caster->m_positionY, max_range, searcher);
+                Cell::VisitWorldObjects(caster, searcher, max_range);
+                if (!result)
+                    Cell::VisitGridObjects(caster, searcher, max_range);
                 if (!result)
                     return SPELL_FAILED_NO_EDIBLE_CORPSES;
                 return SPELL_CAST_OK;
@@ -1027,7 +1029,7 @@ public:
                 uint32 dmg = dmgInfo->GetDamage();
 
                 uint32 bp = CalculatePct(int32(dmg), aurEff->GetAmount()) / (duration / int32(amplitude));
-                bp += target->GetRemainingPeriodicAmount(target->GetGUID(), SPELL_HUNTER_PIERCING_SHOTS, SPELL_AURA_PERIODIC_DAMAGE);
+                bp += target->GetRemainingPeriodicAmount(caster->GetGUID(), SPELL_HUNTER_PIERCING_SHOTS, SPELL_AURA_PERIODIC_DAMAGE);
 
                 caster->CastCustomSpell(SPELL_HUNTER_PIERCING_SHOTS, SPELLVALUE_BASE_POINT0, bp, target, true, nullptr, aurEff);
             }

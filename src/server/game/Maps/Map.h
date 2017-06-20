@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ class BattlegroundMap;
 class InstanceMap;
 class Transport;
 namespace Trinity { struct ObjectUpdater; }
+namespace VMAP { enum class ModelIgnoreFlags : uint32; }
 
 struct ScriptAction
 {
@@ -135,6 +136,9 @@ enum ZLiquidStatus
     LIQUID_MAP_UNDER_WATER  = 0x00000008
 };
 
+#define MAP_LIQUID_STATUS_SWIMMING (LIQUID_MAP_IN_WATER | LIQUID_MAP_UNDER_WATER)
+#define MAP_LIQUID_STATUS_IN_CONTACT (MAP_LIQUID_STATUS_SWIMMING | LIQUID_MAP_WATER_WALK)
+
 #define MAP_LIQUID_TYPE_NO_WATER    0x00
 #define MAP_LIQUID_TYPE_WATER       0x01
 #define MAP_LIQUID_TYPE_OCEAN       0x02
@@ -152,6 +156,32 @@ struct LiquidData
     uint32 entry;
     float  level;
     float  depth_level;
+};
+
+struct PositionFullTerrainStatus
+{
+    struct AreaInfo
+    {
+        AreaInfo(int32 _adtId, int32 _rootId, int32 _groupId, uint32 _flags) : adtId(_adtId), rootId(_rootId), groupId(_groupId), mogpFlags(_flags) { }
+        int32 const adtId;
+        int32 const rootId;
+        int32 const groupId;
+        uint32 const mogpFlags;
+    };
+
+    uint32 areaId;
+    float floorZ;
+    ZLiquidStatus liquidStatus;
+    Optional<AreaInfo> areaInfo;
+    Optional<LiquidData> liquidInfo;
+};
+
+enum LineOfSightChecks
+{
+    LINEOFSIGHT_CHECK_VMAP      = 0x1, // check static floor layout data
+    LINEOFSIGHT_CHECK_GOBJECT   = 0x2, // check dynamic game object data
+
+    LINEOFSIGHT_ALL_CHECKS      = (LINEOFSIGHT_CHECK_VMAP | LINEOFSIGHT_CHECK_GOBJECT)
 };
 
 class TC_GAME_API GridMap
@@ -212,7 +242,7 @@ public:
     float getMinHeight(float x, float y) const;
     float getLiquidLevel(float x, float y) const;
     uint8 getTerrainType(float x, float y) const;
-    ZLiquidStatus getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, LiquidData* data = 0);
+    ZLiquidStatus GetLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, LiquidData* data = 0);
 };
 
 #pragma pack(push, 1)
@@ -335,11 +365,11 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         float GetHeight(float x, float y, float z, bool checkVMap = true, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const;
         float GetMinHeight(float x, float y) const;
 
-        ZLiquidStatus getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, LiquidData* data = nullptr) const;
+        void GetFullTerrainStatusForPosition(float x, float y, float z, PositionFullTerrainStatus& data, uint8 reqLiquidType = MAP_ALL_LIQUIDS) const;
+        ZLiquidStatus GetLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, LiquidData* data = nullptr) const;
 
-        uint32 GetAreaId(float x, float y, float z, bool *isOutdoors) const;
         bool GetAreaInfo(float x, float y, float z, uint32& mogpflags, int32& adtId, int32& rootId, int32& groupId) const;
-        uint32 GetAreaId(float x, float y, float z) const;
+        uint32 GetAreaId(float x, float y, float z, bool *isOutdoors = nullptr) const;
         uint32 GetZoneId(float x, float y, float z) const;
         void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, float y, float z) const;
 
@@ -410,9 +440,6 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         void AddObjectToSwitchList(WorldObject* obj, bool on);
         virtual void DelayedUpdate(const uint32 diff);
 
-        void UpdateObjectVisibility(WorldObject* obj, Cell cell, CellCoord cellpair);
-        void UpdateObjectsVisibilityFor(Player* player, Cell cell, CellCoord cellpair);
-
         void resetMarkedCells() { marked_cells.reset(); }
         bool isCellMarked(uint32 pCellId) { return marked_cells.test(pCellId); }
         void markCell(uint32 pCellId) { marked_cells.set(pCellId); }
@@ -442,16 +469,13 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         void RemoveFromActive(T* obj);
 
         template<class T> void SwitchGridContainers(T* obj, bool on);
-        template<class NOTIFIER> void VisitAll(const float &x, const float &y, float radius, NOTIFIER &notifier);
-        template<class NOTIFIER> void VisitFirstFound(const float &x, const float &y, float radius, NOTIFIER &notifier);
-        template<class NOTIFIER> void VisitWorld(const float &x, const float &y, float radius, NOTIFIER &notifier);
-        template<class NOTIFIER> void VisitGrid(const float &x, const float &y, float radius, NOTIFIER &notifier);
         CreatureGroupHolderType CreatureGroupHolder;
 
         void UpdateIteratorBack(Player* player);
 
-        TempSummon* SummonCreature(uint32 entry, Position const& pos, SummonPropertiesEntry const* properties = NULL, uint32 duration = 0, Unit* summoner = NULL, uint32 spellId = 0, uint32 vehId = 0);
-        void SummonCreatureGroup(uint8 group, std::list<TempSummon*>* list = NULL);
+        TempSummon* SummonCreature(uint32 entry, Position const& pos, SummonPropertiesEntry const* properties = nullptr, uint32 duration = 0, Unit* summoner = nullptr, uint32 spellId = 0, uint32 vehId = 0);
+        void SummonCreatureGroup(uint8 group, std::list<TempSummon*>* list = nullptr);
+        Player* GetPlayer(ObjectGuid const& guid);
         Corpse* GetCorpse(ObjectGuid const& guid);
         Creature* GetCreature(ObjectGuid const& guid);
         GameObject* GetGameObject(ObjectGuid const& guid);
@@ -496,11 +520,15 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
 
         float GetWaterOrGroundLevel(uint32 phasemask, float x, float y, float z, float* ground = NULL, bool swim = false) const;
         float GetHeight(uint32 phasemask, float x, float y, float z, bool vmap = true, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const;
-        bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
+        bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask, LineOfSightChecks checks, VMAP::ModelIgnoreFlags ignoreFlags) const;
         void Balance() { _dynamicTree.balance(); }
         void RemoveGameObjectModel(const GameObjectModel& model) { _dynamicTree.remove(model); }
         void InsertGameObjectModel(const GameObjectModel& model) { _dynamicTree.insert(model); }
         bool ContainsGameObjectModel(const GameObjectModel& model) const { return _dynamicTree.contains(model);}
+        float GetGameObjectFloor(uint32 phasemask, float x, float y, float z, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const
+        {
+            return _dynamicTree.getHeight(x, y, z, maxSearchDist, phasemask);
+        }
         bool getObjectHitPos(uint32 phasemask, float x1, float y1, float z1, float x2, float y2, float z2, float& rx, float &ry, float& rz, float modifyDist);
 
         /*
@@ -822,57 +850,5 @@ inline void Map::Visit(Cell const& cell, TypeContainerVisitor<T, CONTAINER>& vis
         EnsureGridLoaded(cell);
         getNGrid(x, y)->VisitGrid(cell_x, cell_y, visitor);
     }
-}
-
-template<class NOTIFIER>
-inline void Map::VisitAll(float const& x, float const& y, float radius, NOTIFIER& notifier)
-{
-    CellCoord p(Trinity::ComputeCellCoord(x, y));
-    Cell cell(p);
-    cell.SetNoCreate();
-
-    TypeContainerVisitor<NOTIFIER, WorldTypeMapContainer> world_object_notifier(notifier);
-    cell.Visit(p, world_object_notifier, *this, radius, x, y);
-    TypeContainerVisitor<NOTIFIER, GridTypeMapContainer >  grid_object_notifier(notifier);
-    cell.Visit(p, grid_object_notifier, *this, radius, x, y);
-}
-
-// should be used with Searcher notifiers, tries to search world if nothing found in grid
-template<class NOTIFIER>
-inline void Map::VisitFirstFound(const float &x, const float &y, float radius, NOTIFIER &notifier)
-{
-    CellCoord p(Trinity::ComputeCellCoord(x, y));
-    Cell cell(p);
-    cell.SetNoCreate();
-
-    TypeContainerVisitor<NOTIFIER, WorldTypeMapContainer> world_object_notifier(notifier);
-    cell.Visit(p, world_object_notifier, *this, radius, x, y);
-    if (!notifier.i_object)
-    {
-        TypeContainerVisitor<NOTIFIER, GridTypeMapContainer >  grid_object_notifier(notifier);
-        cell.Visit(p, grid_object_notifier, *this, radius, x, y);
-    }
-}
-
-template<class NOTIFIER>
-inline void Map::VisitWorld(const float &x, const float &y, float radius, NOTIFIER &notifier)
-{
-    CellCoord p(Trinity::ComputeCellCoord(x, y));
-    Cell cell(p);
-    cell.SetNoCreate();
-
-    TypeContainerVisitor<NOTIFIER, WorldTypeMapContainer> world_object_notifier(notifier);
-    cell.Visit(p, world_object_notifier, *this, radius, x, y);
-}
-
-template<class NOTIFIER>
-inline void Map::VisitGrid(const float &x, const float &y, float radius, NOTIFIER &notifier)
-{
-    CellCoord p(Trinity::ComputeCellCoord(x, y));
-    Cell cell(p);
-    cell.SetNoCreate();
-
-    TypeContainerVisitor<NOTIFIER, GridTypeMapContainer >  grid_object_notifier(notifier);
-    cell.Visit(p, grid_object_notifier, *this, radius, x, y);
 }
 #endif

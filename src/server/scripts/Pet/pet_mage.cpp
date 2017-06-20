@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,7 +61,7 @@ class npc_pet_mage_mirror_image : public CreatureScript
                 std::list<Unit*> targets;
                 Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(me, me, 30.0f);
                 Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(me, targets, u_check);
-                me->VisitNearbyObject(40.0f, searcher);
+                Cell::VisitAllObjects(me, searcher, 40.0f);
 
                 Unit* highestThreatUnit = nullptr;
                 float highestThreat = 0.0f;
@@ -123,7 +123,7 @@ class npc_pet_mage_mirror_image : public CreatureScript
                 std::list<Unit*> targets;
                 Trinity::AnyUnfriendlyUnitInObjectRangeCheck u_check(me, me, 30.0f);
                 Trinity::UnitListSearcher<Trinity::AnyUnfriendlyUnitInObjectRangeCheck> searcher(me, targets, u_check);
-                me->VisitNearbyObject(40.0f, searcher);
+                Cell::VisitAllObjects(me, searcher, 40.0f);
 
                 for (std::list<Unit*>::const_iterator iter = targets.begin(); iter != targets.end(); ++iter)
                 {
@@ -199,8 +199,8 @@ class npc_pet_mage_mirror_image : public CreatureScript
                 if (!target || me->GetVictim() != target)
                 {
                     Unit* ownerTarget = nullptr;
-                    if (Player* owner = me->GetCharmerOrOwner()->ToPlayer())
-                        ownerTarget = owner->GetSelectedUnit();
+                    if (Player* playerOwner = me->GetCharmerOrOwner()->ToPlayer())
+                        ownerTarget = playerOwner->GetSelectedUnit();
 
                     // recognize which victim will be choosen
                     if (ownerTarget && ownerTarget->GetTypeId() == TYPEID_PLAYER)

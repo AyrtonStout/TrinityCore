@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -906,38 +906,27 @@ void hyjalAI::JustDied(Unit* /*killer*/)
 
 void hyjalAI::HideNearPos(float x, float y)
 {
-    CellCoord pair(Trinity::ComputeCellCoord(x, y));
-    Cell cell(pair);
-    cell.SetNoCreate();
-
     // First get all creatures.
     std::list<Creature*> creatures;
     Trinity::AllFriendlyCreaturesInGrid creature_check(me);
     Trinity::CreatureListSearcher<Trinity::AllFriendlyCreaturesInGrid> creature_searcher(me, creatures, creature_check);
-
-    TypeContainerVisitor <Trinity::CreatureListSearcher<Trinity::AllFriendlyCreaturesInGrid>, GridTypeMapContainer> creature_visitor(creature_searcher);
-    cell.Visit(pair, creature_visitor, *(me->GetMap()), *me, me->GetGridActivationRange());
+    Cell::VisitGridObjects(x, y, me->GetMap(), creature_searcher, me->GetGridActivationRange());
 
     if (!creatures.empty())
     {
         for (std::list<Creature*>::const_iterator itr = creatures.begin(); itr != creatures.end(); ++itr)
         {
             (*itr)->SetVisible(false);
-            (*itr)->setFaction(35);//make them friendly so mobs won't attack them
+            (*itr)->SetFaction(FACTION_FRIENDLY);//make them friendly so mobs won't attack them
         }
     }
 }
 
 void hyjalAI::RespawnNearPos(float x, float y)
 {
-    CellCoord p(Trinity::ComputeCellCoord(x, y));
-    Cell cell(p);
-    cell.SetNoCreate();
-
     Trinity::RespawnDo u_do;
     Trinity::WorldObjectWorker<Trinity::RespawnDo> worker(me, u_do);
-    TypeContainerVisitor<Trinity::WorldObjectWorker<Trinity::RespawnDo>, GridTypeMapContainer > obj_worker(worker);
-    cell.Visit(p, obj_worker, *me->GetMap(), *me, me->GetGridActivationRange());
+    Cell::VisitGridObjects(x, y, me->GetMap(), worker, me->GetGridActivationRange());
 }
 
 void hyjalAI::WaypointReached(uint32 waypointId)
@@ -961,19 +950,11 @@ void hyjalAI::WaypointReached(uint32 waypointId)
         }
         //do some talking
         //all alive guards walk near here
-        CellCoord pair(Trinity::ComputeCellCoord(me->GetPositionX(), me->GetPositionY()));
-        Cell cell(pair);
-        cell.SetNoCreate();
-
         // First get all creatures.
         std::list<Creature*> creatures;
         Trinity::AllFriendlyCreaturesInGrid creature_check(me);
         Trinity::CreatureListSearcher<Trinity::AllFriendlyCreaturesInGrid> creature_searcher(me, creatures, creature_check);
-        TypeContainerVisitor
-            <Trinity::CreatureListSearcher<Trinity::AllFriendlyCreaturesInGrid>,
-            GridTypeMapContainer> creature_visitor(creature_searcher);
-
-        cell.Visit(pair, creature_visitor, *(me->GetMap()), *me, me->GetGridActivationRange());
+        Cell::VisitGridObjects(me, creature_searcher, me->GetGridActivationRange());
 
         if (!creatures.empty())
         {
@@ -1002,18 +983,10 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
     {
         if (TeleportTimer <= diff)
         {
-            CellCoord pair(Trinity::ComputeCellCoord(me->GetPositionX(), me->GetPositionY()));
-            Cell cell(pair);
-            cell.SetNoCreate();
-
             std::list<Creature*> creatures;
             Trinity::AllFriendlyCreaturesInGrid creature_check(me);
             Trinity::CreatureListSearcher<Trinity::AllFriendlyCreaturesInGrid> creature_searcher(me, creatures, creature_check);
-            TypeContainerVisitor
-                <Trinity::CreatureListSearcher<Trinity::AllFriendlyCreaturesInGrid>,
-                GridTypeMapContainer> creature_visitor(creature_searcher);
-
-            cell.Visit(pair, creature_visitor, *(me->GetMap()), *me, me->GetGridActivationRange());
+            Cell::VisitGridObjects(me, creature_searcher, me->GetGridActivationRange());
 
             if (!creatures.empty())
             {
@@ -1022,7 +995,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
                     if ((*itr) && (*itr)->IsAlive())
                     {
                         (*itr)->CastSpell(*itr, SPELL_TELEPORT_VISUAL, true);
-                        (*itr)->setFaction(35);//make them friendly so mobs won't attack them
+                        (*itr)->SetFaction(FACTION_FRIENDLY);//make them friendly so mobs won't attack them
                         (*itr)->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     }
                 }

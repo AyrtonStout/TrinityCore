@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ enum SCEquip
     EQUIP_UNEQUIP   = 0
 };
 
-typedef std::set<AreaBoundary const*> CreatureBoundary;
+typedef std::vector<AreaBoundary const*> CreatureBoundary;
 class TC_GAME_API CreatureAI : public UnitAI
 {
     protected:
@@ -81,7 +81,7 @@ class TC_GAME_API CreatureAI : public UnitAI
         Creature* DoSummonFlyer(uint32 entry, WorldObject* obj, float flightZ, float radius = 5.0f, uint32 despawnTime = 30000, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
 
         bool CheckBoundary(Position const* who = nullptr) const;
-        void SetBoundary(CreatureBoundary const* boundary) { _boundary = boundary; me->DoImmediateBoundaryCheck(); }
+
     public:
         enum EvadeReason
         {
@@ -94,7 +94,7 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         void Talk(uint8 id, WorldObject const* whisperTarget = nullptr);
 
-        explicit CreatureAI(Creature* creature) : UnitAI(creature), me(creature), _boundary(nullptr), m_MoveInLineOfSight_locked(false) { }
+        explicit CreatureAI(Creature* creature) : UnitAI(creature), me(creature), _boundary(nullptr), _negateBoundary(false), m_MoveInLineOfSight_locked(false) { }
 
         virtual ~CreatureAI() { }
 
@@ -131,8 +131,6 @@ class TC_GAME_API CreatureAI : public UnitAI
         // Called when spell hits a target
         virtual void SpellHitTarget(Unit* /*target*/, SpellInfo const* /*spell*/) { }
 
-        // Called when the creature is target of hostile action: swing, hostile spell landed, fear/etc)
-        virtual void AttackedBy(Unit* /*attacker*/) { }
         virtual bool IsEscorted() const { return false; }
 
         // Called when creature is spawned or respawned
@@ -152,15 +150,14 @@ class TC_GAME_API CreatureAI : public UnitAI
         virtual void ReceiveEmote(Player* /*player*/, uint32 /*emoteId*/) { }
 
         // Called when owner takes damage
-        virtual void OwnerAttackedBy(Unit* /*attacker*/) { }
+        virtual void OwnerAttackedBy(Unit* attacker) { _OnOwnerCombatInteraction(attacker); }
 
         // Called when owner attacks something
-        virtual void OwnerAttacked(Unit* /*target*/) { }
+        virtual void OwnerAttacked(Unit* target) { _OnOwnerCombatInteraction(target); }
 
         /// == Triggered Actions Requested ==================
 
         // Called when creature attack expected (if creature can and no have current victim)
-        // Note: for reaction at hostile action must be called AttackedBy function.
         //virtual void AttackStart(Unit*) { }
 
         // Called at World update tick
@@ -191,9 +188,12 @@ class TC_GAME_API CreatureAI : public UnitAI
         virtual PlayerAI* GetAIForCharmedPlayer(Player* /*who*/) { return nullptr; }
 
         // intended for encounter design/debugging. do not use for other purposes. expensive.
-        int32 VisualizeBoundary(uint32 duration, Unit* owner=nullptr, bool fill=false) const;
+        int32 VisualizeBoundary(uint32 duration, Unit* owner = nullptr, bool fill = false) const;
         virtual bool CheckInRoom();
         CreatureBoundary const* GetBoundary() const { return _boundary; }
+        void SetBoundary(CreatureBoundary const* boundary, bool negativeBoundaries = false);
+
+        static bool IsInBounds(CreatureBoundary const& boundary, Position const* who);
 
     protected:
         virtual void MoveInLineOfSight(Unit* /*who*/);
@@ -201,12 +201,14 @@ class TC_GAME_API CreatureAI : public UnitAI
         bool _EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER);
 
         CreatureBoundary const* _boundary;
+        bool _negateBoundary;
 
     private:
         bool m_MoveInLineOfSight_locked;
+        void _OnOwnerCombatInteraction(Unit* target);
 };
 
-enum Permitions
+enum Permitions : int32
 {
     PERMIT_BASE_NO                 = -1,
     PERMIT_BASE_IDLE               = 1,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/deadline_timer.hpp>
 
-using namespace boost::asio;
-
 /// Storage object for the list of realms on the server
 class TC_SHARED_API RealmList
 {
@@ -48,8 +46,8 @@ private:
     RealmList();
 
     void UpdateRealms(boost::system::error_code const& error);
-    void UpdateRealm(RealmHandle const& id, uint32 build, const std::string& name, ip::address const& address, ip::address const& localAddr,
-        ip::address const& localSubmask, uint16 port, uint8 icon, RealmFlags flag, uint8 timezone, AccountTypes allowedSecurityLevel, float population);
+    void UpdateRealm(RealmHandle const& id, uint32 build, const std::string& name, boost::asio::ip::address const& address, boost::asio::ip::address const& localAddr,
+        boost::asio::ip::address const& localSubmask, uint16 port, uint8 icon, RealmFlags flag, uint8 timezone, AccountTypes allowedSecurityLevel, float population);
 
     RealmMap _realms;
     uint32 _updateInterval;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -246,7 +246,7 @@ public:
                         me->SetCanFly(true);
                         me->SetDisableGravity(true);
                         me->SetByteFlag(UNIT_FIELD_BYTES_1, UNIT_BYTES_1_OFFSET_ANIM_TIER, UNIT_BYTE1_FLAG_ALWAYS_STAND | UNIT_BYTE1_FLAG_HOVER);
-                        me->SetFacingTo(me->GetOrientation() + float(M_PI), true);
+                        me->SetFacingTo(me->GetOrientation() + float(M_PI));
                         if (Creature * trigger = me->SummonCreature(NPC_TRIGGER, MiddleRoomLocation, TEMPSUMMON_CORPSE_DESPAWN))
                             triggerGUID = trigger->GetGUID();
                         me->GetMotionMaster()->MoveTakeoff(11, Phase2Floating);
@@ -356,7 +356,7 @@ public:
                             GameObject* Floor = NULL;
                             Trinity::GameObjectInRangeCheck check(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), 15);
                             Trinity::GameObjectLastSearcher<Trinity::GameObjectInRangeCheck> searcher(me, Floor, check);
-                            me->VisitNearbyGridObject(30, searcher);
+                            Cell::VisitGridObjects(me, searcher, 30.0f);
                             if (Floor)
                                 instance->SetGuidData(DATA_FLOOR_ERUPTION_GUID, Floor->GetGUID());
                             events.ScheduleEvent(EVENT_BELLOWING_ROAR, 30000);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,6 +26,19 @@
 #include "ReputationMgr.h"
 #include "Language.h"
 #include "World.h"
+
+uint32 const SI_MAX_RESOURCES = 200;
+
+uint32 const SI_AREATRIGGER_H = 4168;
+uint32 const SI_AREATRIGGER_A = 4162;
+
+uint32 const SI_TURNIN_QUEST_CM_A = 17090;
+uint32 const SI_TURNIN_QUEST_CM_H = 18199;
+
+uint32 const SI_SILITHYST_MOUND = 181597;
+
+uint8 const OutdoorPvPSIBuffZonesNum = 3;
+uint32 const OutdoorPvPSIBuffZones[OutdoorPvPSIBuffZonesNum] = { 1377, 3428, 3429 };
 
 OutdoorPvPSI::OutdoorPvPSI()
 {
@@ -151,7 +164,7 @@ bool OutdoorPvPSI::HandleDropFlag(Player* player, uint32 spellId)
         // if it was dropped away from the player's turn-in point, then create a silithyst mound, if it was dropped near the areatrigger, then it was dispelled by the outdoorpvp, so do nothing
         switch (player->GetTeam())
         {
-        case ALLIANCE:
+            case ALLIANCE:
             {
                 AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(SI_AREATRIGGER_A);
                 if (atEntry)
@@ -178,9 +191,9 @@ bool OutdoorPvPSI::HandleDropFlag(Player* player, uint32 spellId)
                         }
                     }
                 }
+                break;
             }
-            break;
-        case HORDE:
+            case HORDE:
             {
                 AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(SI_AREATRIGGER_H);
                 if (atEntry)
@@ -207,8 +220,8 @@ bool OutdoorPvPSI::HandleDropFlag(Player* player, uint32 spellId)
                         }
                     }
                 }
+                break;
             }
-            break;
         }
         return true;
     }
