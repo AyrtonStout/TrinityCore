@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,12 +27,6 @@ class GameObject;
 class Creature;
 class ZoneScript;
 struct GossipMenuItems;
-
-struct OutdoorPvPData
-{
-    OutdoorPvPTypes TypeId;
-    uint32 ScriptId;
-};
 
 // class to handle player enter / leave / areatrigger / GO use events
 class TC_GAME_API OutdoorPvPMgr
@@ -84,8 +78,8 @@ class TC_GAME_API OutdoorPvPMgr
 
     private:
         typedef std::vector<OutdoorPvP*> OutdoorPvPSet;
-        typedef std::map<uint32 /* zoneid */, OutdoorPvP*> OutdoorPvPMap;
-        typedef std::map<OutdoorPvPTypes, OutdoorPvPData*> OutdoorPvPDataMap;
+        typedef std::unordered_map<uint32 /* zoneid */, OutdoorPvP*> OutdoorPvPMap;
+        typedef std::array<uint32, MAX_OUTDOORPVP_TYPES> OutdoorPvPScriptIds;
 
         // contains all initiated outdoor pvp events
         // used when initing / cleaning up
@@ -96,7 +90,7 @@ class TC_GAME_API OutdoorPvPMgr
         OutdoorPvPMap   m_OutdoorPvPMap;
 
         // Holds the outdoor PvP templates
-        OutdoorPvPDataMap m_OutdoorPvPDatas;
+        OutdoorPvPScriptIds m_OutdoorPvPDatas;
 
         // update interval
         uint32 m_UpdateTimer;

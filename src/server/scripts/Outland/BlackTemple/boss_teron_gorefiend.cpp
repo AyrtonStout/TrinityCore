@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -334,15 +334,12 @@ public:
         {
             if (Creature* teron = _instance->GetCreature(DATA_TERON_GOREFIEND))
             {
-                if (Unit* target = teron->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true, -SPELL_SPIRITUAL_VENGEANCE))
-                {
-                    DoResetThreat();
-                    AttackStart(target);
-                    me->AddThreat(target, 1000000.0f);
-                    targetGUID = target->GetGUID();
-                }
+                Unit* target = teron->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true, -SPELL_SPIRITUAL_VENGEANCE);
                 // He should target Vengeful Spirits only if has no other player available
-                else if (Unit* target = teron->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0))
+                if (!target)
+                    target = teron->AI()->SelectTarget(SELECT_TARGET_RANDOM, 0);
+
+                if (target)
                 {
                     DoResetThreat();
                     AttackStart(target);

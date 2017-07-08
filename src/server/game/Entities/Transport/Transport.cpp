@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -149,8 +149,8 @@ void Transport::Update(uint32 diff)
 
             if (timer < _currentFrame->DepartureTime)
             {
+                justStopped = IsMoving();
                 SetMoving(false);
-                justStopped = true;
                 if (_pendingStop && GetGoState() != GO_STATE_READY)
                 {
                     SetGoState(GO_STATE_READY);
@@ -286,7 +286,10 @@ void Transport::RemovePassenger(WorldObject* passenger)
         TC_LOG_DEBUG("entities.transport", "Object %s removed from transport %s.", passenger->GetName().c_str(), GetName().c_str());
 
         if (Player* plr = passenger->ToPlayer())
+        {
             sScriptMgr->OnRemovePassenger(this, plr);
+            plr->SetFallInformation(0, plr->GetPositionZ());
+        }
     }
 }
 
@@ -629,7 +632,8 @@ bool Transport::TeleportTransport(uint32 newMapid, float x, float y, float z, fl
                 (*itr)->m_movementInfo.transport.pos.GetPosition(destX, destY, destZ, destO);
                 TransportBase::CalculatePassengerPosition(destX, destY, destZ, &destO, x, y, z, o);
 
-                (*itr)->ToUnit()->NearTeleportTo(destX, destY, destZ, destO);
+                (*itr)->ToPlayer()->TeleportTo(newMapid, destX, destY, destZ, destO,
+                    TELE_TO_NOT_LEAVE_TRANSPORT | TELE_TO_NOT_LEAVE_COMBAT | TELE_TO_NOT_UNSUMMON_PET | TELE_TO_TRANSPORT_TELEPORT);
             }
         }
 
@@ -713,8 +717,11 @@ void Transport::UpdatePassengerPositions(PassengerSet& passengers)
             }
             case TYPEID_PLAYER:
                 //relocate only passengers in world and skip any player that might be still logging in/teleporting
-                if (passenger->IsInWorld())
+                if (passenger->IsInWorld() && !passenger->ToPlayer()->IsBeingTeleported())
+                {
                     GetMap()->PlayerRelocation(passenger->ToPlayer(), x, y, z, o);
+                    passenger->ToPlayer()->SetFallInformation(0, passenger->GetPositionZ());
+                }
                 break;
             case TYPEID_GAMEOBJECT:
                 GetMap()->GameObjectRelocation(passenger->ToGameObject(), x, y, z, o, false);

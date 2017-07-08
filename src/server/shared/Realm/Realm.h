@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,8 +21,6 @@
 #include "Common.h"
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
-
-using namespace boost::asio;
 
 enum RealmFlags
 {
@@ -70,9 +68,9 @@ struct TC_SHARED_API Realm
 {
     RealmHandle Id;
     uint32 Build;
-    ip::address ExternalAddress;
-    ip::address LocalAddress;
-    ip::address LocalSubnetMask;
+    boost::asio::ip::address ExternalAddress;
+    boost::asio::ip::address LocalAddress;
+    boost::asio::ip::address LocalSubnetMask;
     uint16 Port;
     std::string Name;
     uint8 Type;
@@ -81,7 +79,7 @@ struct TC_SHARED_API Realm
     AccountTypes AllowedSecurityLevel;
     float PopulationLevel;
 
-    ip::tcp::endpoint GetAddressForClient(ip::address const& clientAddr) const;
+    boost::asio::ip::tcp::endpoint GetAddressForClient(boost::asio::ip::address const& clientAddr) const;
 };
 
 #endif // Realm_h__

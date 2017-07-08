@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -78,7 +78,7 @@ enum TrinityStrings
     LANG_UNKNOWN                        = 45,
     LANG_ERROR                          = 46,
     LANG_NON_EXIST_CHARACTER            = 47,
-    LANG_FRIEND_IGNORE_UNKNOWN          = 48,
+    // unused                           = 48,
     LANG_LEVEL_MINREQUIRED              = 49,
     LANG_LEVEL_MINREQUIRED_AND_ITEM     = 50,
     LANG_NPC_TAINER_HELLO               = 51,
@@ -114,7 +114,10 @@ enum TrinityStrings
     LANG_PVPSTATS_DISABLED              = 81,
     LANG_COMMAND_NEARGRAVEYARD          = 82,
     LANG_COMMAND_NEARGRAVEYARD_NOTFOUND = 83,
-    // Free 84 - 95
+    LANG_GOINFO_SIZE                    = 84,
+    LANG_GOINFO_ADDON                   = 85,
+    LANG_GOINFO_MODEL                   = 86,
+    // Free 87 - 95
 
 
     LANG_GUILD_RENAME_ALREADY_EXISTS    = 96,
@@ -212,7 +215,8 @@ enum TrinityStrings
     LANG_GRID_POSITION                  = 178,
     // 179-185 used in 6.x branch
     LANG_TRANSPORT_POSITION             = 186,
-    // Room for more level 1              187-199 not used
+    LANG_PARTIAL_GROUP_SUMMON           = 187,
+    // Room for more level 1              188-199 not used
 
     // level 2 chat
     LANG_NO_SELECTION                   = 200,
@@ -311,7 +315,15 @@ enum TrinityStrings
     LANG_COMMAND_WHISPERON              = 285,
     LANG_COMMAND_WHISPEROFF             = 286,
     LANG_COMMAND_CREATGUIDNOTFOUND      = 287,
-      // TICKET STRINGS NEED REWRITE // 288-296 FREE
+    LANG_COMMAND_NOT_DEAD_OR_NO_LOOT    = 288,
+    LANG_COMMAND_NPC_SHOWLOOT_HEADER    = 289,
+    LANG_COMMAND_NPC_SHOWLOOT_LABEL     = 290,
+    LANG_COMMAND_NPC_SHOWLOOT_ENTRY     = 291,
+    LANG_COMMAND_NPC_SHOWLOOT_MONEY     = 292,
+    LANG_COMMAND_NPC_SHOWLOOT_LABEL_2   = 293,
+    LANG_COMMAND_NPC_SHOWLOOT_SUBLABEL  = 294,
+    LANG_COMMAND_NPC_SHOWLOOT_ENTRY_2   = 295,
+      // 296 free
 
       // END
     LANG_COMMAND_SPAWNDIST              = 297,
@@ -537,7 +549,7 @@ enum TrinityStrings
     LANG_MOVEGENS_IDLE                  = 527,
     LANG_MOVEGENS_RANDOM                = 528,
     LANG_MOVEGENS_WAYPOINT              = 529,
-    LANG_MOVEGENS_ANIMAL_RANDOM         = 530,
+    //                                  = 530, not used
     LANG_MOVEGENS_CONFUSED              = 531,
     LANG_MOVEGENS_CHASE_PLAYER          = 532,
     LANG_MOVEGENS_CHASE_CREATURE        = 533,
@@ -983,7 +995,11 @@ enum TrinityStrings
     LANG_GUILD_INFO_BANK_GOLD           = 1181,
     LANG_GUILD_INFO_MOTD                = 1182,
     LANG_GUILD_INFO_EXTRA_INFO          = 1183,
-    // Room for more level 3              1184-1198 not used
+    LANG_CHANGEACCOUNT_SUCCESS          = 1184,             // log
+    LANG_GROUP_NOT_IN_RAID_GROUP        = 1185,
+    LANG_GROUP_ROLE_CHANGED             = 1186,
+    LANG_LEADER_CANNOT_BE_ASSISTANT     = 1187,
+    // Room for more level 3              1188-1198 not used
 
     // Debug commands
     LANG_DO_NOT_USE_6X_DEBUG_AREATRIGGER_LEFT = 1999,

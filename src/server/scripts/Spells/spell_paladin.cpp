@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,6 +22,7 @@
  */
 
 #include "Player.h"
+#include "GameTime.h"
 #include "ScriptMgr.h"
 #include "SpellScript.h"
 #include "SpellAuraEffects.h"
@@ -131,7 +132,8 @@ enum PaladinSpells
 
 enum PaladinSpellIcons
 {
-    PALADIN_ICON_ID_RETRIBUTION_AURA             = 555
+    PALADIN_ICON_ID_RETRIBUTION_AURA             = 555,
+    PALADIN_ICON_ID_HAMMER_OF_THE_RIGHTEOUS      = 3023
 };
 
 // 31850 - Ardent Defender
@@ -1315,8 +1317,8 @@ class spell_pal_infusion_of_light : public SpellScriptLoader
                             int32 bp0 = CalculatePct(healInfo->GetHeal() / duration, pct);
 
                             // Item - Paladin T9 Holy 4P Bonus
-                            if (AuraEffect const* aurEff = target->GetAuraEffect(SPELL_PALADIN_T9_HOLY_4P_BONUS, 0))
-                                AddPct(bp0, aurEff->GetAmount());
+                            if (AuraEffect const* bonus = target->GetAuraEffect(SPELL_PALADIN_T9_HOLY_4P_BONUS, 0))
+                                AddPct(bp0, bonus->GetAmount());
 
                             target->CastCustomSpell(SPELL_PALADIN_FLASH_OF_LIGHT_PROC, SPELLVALUE_BASE_POINT0, bp0, procTarget, true, nullptr, aurEff);
                         }
@@ -1590,10 +1592,11 @@ class spell_pal_judgement_of_wisdom_mana : public SpellScriptLoader
             {
                 PreventDefaultAction();
 
-                Unit* caster = eventInfo.GetProcTarget();
-                int32 amount = CalculatePct(static_cast<int32>(caster->GetCreateMana()), aurEff->GetAmount());
+                SpellInfo const* spellInfo = sSpellMgr->AssertSpellInfo(SPELL_PALADIN_JUDGEMENT_OF_WISDOM_MANA);
 
-                caster->CastCustomSpell(SPELL_PALADIN_JUDGEMENT_OF_WISDOM_MANA, SPELLVALUE_BASE_POINT0, amount, (Unit*)nullptr, true, nullptr, aurEff, GetCasterGUID());
+                Unit* caster = eventInfo.GetProcTarget();
+                int32 const amount = CalculatePct(static_cast<int32>(caster->GetCreateMana()), spellInfo->Effects[EFFECT_0].CalcValue());
+                caster->CastCustomSpell(spellInfo->Id, SPELLVALUE_BASE_POINT0, amount, (Unit*)nullptr, true, nullptr, aurEff, GetCasterGUID());
             }
 
             void Register() override
@@ -1988,7 +1991,7 @@ class spell_pal_sacred_shield_dummy : public SpellScriptLoader
                 if (!caster)
                     return;
 
-                std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+                std::chrono::steady_clock::time_point now = GameTime::GetGameTimeSteadyPoint();
                 if (_cooldownEnd > now)
                     return;
 
@@ -2104,7 +2107,12 @@ class spell_pal_seal_of_vengeance : public SpellScriptLoader
                 PreventDefaultAction();
 
                 if (!(eventInfo.GetTypeMask() & PROC_FLAG_DONE_MELEE_AUTO_ATTACK))
-                    return;
+                {
+                    // Patch 3.2.0 Notes: Only auto-attacks and Hammer of the Righteous can place the debuff on the paladin's current target(s).
+                    SpellInfo const* spellInfo = eventInfo.GetSpellInfo();
+                    if (!spellInfo || spellInfo->SpellIconID != PALADIN_ICON_ID_HAMMER_OF_THE_RIGHTEOUS)
+                        return;
+                }
 
                 // don't cast triggered, spell already has SPELL_ATTR4_CAN_CAST_WHILE_CASTING attr
                 eventInfo.GetActor()->CastSpell(eventInfo.GetProcTarget(), DoTSpell, TRIGGERED_DONT_RESET_PERIODIC_TIMER, nullptr, aurEff);
