@@ -74,13 +74,10 @@
 #include "WeatherMgr.h"
 #include "WorldSession.h"
 #include "M2Stores.h"
-<<<<<<< HEAD
 #include "PlayerBotManager.h"
-=======
 #include "WhoListStorage.h"
 #include "GameTime.h"
 #include "UpdateTime.h"
->>>>>>> 3.3.5
 
 TC_GAME_API std::atomic<bool> World::m_stopEvent(false);
 TC_GAME_API uint8 World::m_ExitCode = SHUTDOWN_EXIT_CODE;
