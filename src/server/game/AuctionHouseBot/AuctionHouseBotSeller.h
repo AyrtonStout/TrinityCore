@@ -21,6 +21,7 @@
 #include "Define.h"
 #include "ItemTemplate.h"
 #include "AuctionHouseBot.h"
+#include <random>
 
 struct ItemToSell
 {

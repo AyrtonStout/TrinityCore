@@ -627,13 +627,8 @@ void AuctionBotSeller::SetPricesOfItem(ItemTemplate const* itemProto, SellerConf
     if (sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BUYPRICE_SELLER))
         buyPrice = sellPrice;
 
-//<<<<<<< HEAD
-//    float basePriceFloat = (buyPrice * stackCount * priceRatio) / (itemProto->Class == 6 ? 200.0f : static_cast<float>(itemProto->BuyCount)) / 100.0f;
-//=======
     float basePriceFloat = buyPrice * stackCount / (itemProto->Class == 6 ? 200.0f : static_cast<float>(itemProto->BuyCount));
     basePriceFloat *= priceRatio;
-
-//>>>>>>> upstream/3.3.5
 
     uint32 itemLevel = itemProto->ItemLevel;
     if (itemLevel >= 264) 
