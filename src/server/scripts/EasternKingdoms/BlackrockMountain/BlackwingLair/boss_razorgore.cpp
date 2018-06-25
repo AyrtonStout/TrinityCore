@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,11 +17,13 @@
  */
 
 #include "ScriptMgr.h"
+#include "blackwing_lair.h"
+#include "InstanceScript.h"
+#include "GameObject.h"
+#include "GameObjectAI.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "SpellScript.h"
-#include "GameObjectAI.h"
-#include "blackwing_lair.h"
-#include "Player.h"
 
 enum Say
 {
@@ -149,10 +151,6 @@ public:
                         break;
                     case EVENT_CONFLAGRATION:
                         DoCastVictim(SPELL_CONFLAGRATION);
-                        // @todo is this even necessary? pretty sure AI ignores targets with disorient by default
-                        if (me->GetVictim() && me->EnsureVictim()->HasAura(SPELL_CONFLAGRATION))
-                            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1, 100, true))
-                                me->TauntApply(target);
                         events.ScheduleEvent(EVENT_CONFLAGRATION, 30000);
                         break;
                 }
@@ -169,7 +167,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<boss_razorgoreAI>(creature);
+        return GetBlackwingLairAI<boss_razorgoreAI>(creature);
     }
 };
 
@@ -200,7 +198,7 @@ class go_orb_of_domination : public GameObjectScript
 
         GameObjectAI* GetAI(GameObject* go) const override
         {
-            return GetInstanceAI<go_orb_of_dominationAI>(go);
+            return GetBlackwingLairAI<go_orb_of_dominationAI>(go);
         }
 };
 

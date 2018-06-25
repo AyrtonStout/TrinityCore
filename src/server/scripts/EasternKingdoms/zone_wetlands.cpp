@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -56,9 +56,9 @@ public:
         return new npc_tapoke_slim_jahnAI(creature);
     }
 
-    struct npc_tapoke_slim_jahnAI : public npc_escortAI
+    struct npc_tapoke_slim_jahnAI : public EscortAI
     {
-        npc_tapoke_slim_jahnAI(Creature* creature) : npc_escortAI(creature)
+        npc_tapoke_slim_jahnAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -76,7 +76,7 @@ public:
                 Initialize();
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -89,7 +89,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             if (HasEscortState(STATE_ESCORT_ESCORTING) && !IsFriendSummoned && GetPlayerForEscort())
             {
@@ -118,7 +118,7 @@ public:
 
                     me->RestoreFaction();
                     me->RemoveAllAuras();
-                    me->DeleteThreatList();
+                    me->GetThreatManager().ClearAllThreat();
                     me->CombatStop(true);
 
                     SetRun(false);

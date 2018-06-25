@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -60,11 +60,11 @@ class npc_professor_phizzlethorpe : public CreatureScript
     public:
         npc_professor_phizzlethorpe() : CreatureScript("npc_professor_phizzlethorpe") { }
 
-        struct npc_professor_phizzlethorpeAI : public npc_escortAI
+        struct npc_professor_phizzlethorpeAI : public EscortAI
         {
-            npc_professor_phizzlethorpeAI(Creature* creature) : npc_escortAI(creature) { }
+            npc_professor_phizzlethorpeAI(Creature* creature) : EscortAI(creature) { }
 
-            void WaypointReached(uint32 waypointId) override
+            void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
             {
                 Player* player = GetPlayerForEscort();
                 if (!player)
@@ -108,7 +108,7 @@ class npc_professor_phizzlethorpe : public CreatureScript
                 summoned->AI()->AttackStart(me);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 Talk(SAY_AGGRO);
             }
@@ -118,14 +118,14 @@ class npc_professor_phizzlethorpe : public CreatureScript
                 if (quest->GetQuestId() == QUEST_SUNKEN_TREASURE)
                 {
                     Talk(SAY_PROGRESS_1, player);
-                    npc_escortAI::Start(false, false, player->GetGUID(), quest);
+                    EscortAI::Start(false, false, player->GetGUID(), quest);
                     me->SetFaction(FACTION_ESCORTEE_N_NEUTRAL_PASSIVE);
                 }
             }
 
             void UpdateAI(uint32 diff) override
             {
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             }
         };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -34,15 +34,19 @@ npc_lurgglbr
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
+#include "GameObject.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "ObjectMgr.h"
+#include "Player.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedFollowerAI.h"
-#include "Player.h"
-#include "SpellInfo.h"
-#include "WorldSession.h"
-#include "SpellScript.h"
+#include "ScriptedGossip.h"
 #include "SpellAuraEffects.h"
+#include "SpellInfo.h"
+#include "SpellScript.h"
+#include "TemporarySummon.h"
+#include "WorldSession.h"
 
 /*######
 ## npc_sinkhole_kill_credit
@@ -87,7 +91,7 @@ public:
             Initialize();
         }
 
-        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
             if (phase || spell->Id != SPELL_SET_CART)
                 return;
@@ -100,7 +104,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
@@ -145,7 +149,7 @@ public:
                         DoCast(me, SPELL_EXPLODE_CART, true);
                         if (Unit* worm = me->FindNearestCreature(NPC_SCOURGED_BURROWER, 3.0f))
                         {
-                            me->Kill(worm);
+                            Unit::Kill(me, worm);
                             worm->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
                         }
                         phaseTimer = 2000;
@@ -360,15 +364,16 @@ public:
         npc_nerubar_victimAI(Creature* creature) : ScriptedAI(creature) { }
 
         void Reset() override { }
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
         void MoveInLineOfSight(Unit* /*who*/) override { }
 
 
         void JustDied(Unit* killer) override
         {
-            Player* player = killer->ToPlayer();
-            if (!player)
+            if (!killer || killer->GetTypeId() != TYPEID_PLAYER)
                 return;
+
+            Player* player = killer->ToPlayer();
 
             if (player->GetQuestStatus(QUEST_TAKEN_BY_THE_SCOURGE) == QUEST_STATUS_INCOMPLETE)
             {
@@ -457,13 +462,13 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
         void MoveInLineOfSight(Unit* /*who*/) override { }
 
 
         void JustDied(Unit* /*killer*/) override
         {
-            if (GameObject* go_caribou = me->GetMap()->GetGameObject(go_caribouGUID))
+            if (GameObject* go_caribou = ObjectAccessor::GetGameObject(*me, go_caribouGUID))
                 go_caribou->SetLootState(GO_JUST_DEACTIVATED);
 
             if (TempSummon* summon = me->ToTempSummon())
@@ -472,7 +477,7 @@ public:
                         if (Player* player = temp->ToPlayer())
                             player->KilledMonsterCredit(me->GetEntry());
 
-            if (GameObject* go_caribou = me->GetMap()->GetGameObject(go_caribouGUID))
+            if (GameObject* go_caribou = ObjectAccessor::GetGameObject(*me, go_caribouGUID))
                 go_caribou->SetGoState(GO_STATE_READY);
         }
 
@@ -516,7 +521,7 @@ public:
                         break;
                     case 7:
                     {
-                        GameObject* go_caribou = NULL;
+                        GameObject* go_caribou = nullptr;
                         for (uint8 i = 0; i < CaribouTrapsNum; ++i)
                         {
                             go_caribou = me->FindNearestGameObject(CaribouTraps[i], 5.0f);
@@ -567,9 +572,9 @@ class npc_lurgglbr : public CreatureScript
 public:
     npc_lurgglbr() : CreatureScript("npc_lurgglbr") { }
 
-    struct npc_lurgglbrAI : public npc_escortAI
+    struct npc_lurgglbrAI : public EscortAI
     {
-        npc_lurgglbrAI(Creature* creature) : npc_escortAI(creature)
+        npc_lurgglbrAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -589,7 +594,7 @@ public:
                 Initialize();
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -598,6 +603,7 @@ public:
                     IntroTimer = 2000;
                     break;
                 case 41:
+                    SetEscortPaused(true);
                     IntroPhase = 4;
                     IntroTimer = 2000;
                     break;
@@ -624,7 +630,7 @@ public:
                             IntroTimer = 7500;
                             break;
                         case 3:
-                            me->SetReactState(REACT_AGGRESSIVE);
+                            me->SetReactState(REACT_DEFENSIVE);
                             IntroPhase = 0;
                             IntroTimer = 0;
                             break;
@@ -639,14 +645,12 @@ public:
                             IntroPhase = 6;
                             IntroTimer = 2500;
                             break;
-
                         case 6:
                             if (Player* player = GetPlayerForEscort())
                                 player->AreaExploredOrEventHappens(QUEST_ESCAPE_WINTERFIN_CAVERNS);
                             IntroPhase = 7;
                             IntroTimer = 2500;
                             break;
-
                         case 7:
                             me->DespawnOrUnsummon();
                             IntroPhase = 0;
@@ -655,7 +659,7 @@ public:
                     }
                 } else IntroTimer -= diff;
             }
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (!UpdateVictim())
                 return;
@@ -668,8 +672,7 @@ public:
                 if (GameObject* go = me->FindNearestGameObject(GO_CAGE, 5.0f))
                 {
                     go->SetRespawnTime(0);
-                    go->SetGoType(GAMEOBJECT_TYPE_BUTTON);
-                    go->UseDoorOrButton(20);
+                    go->UseDoorOrButton(20000);
                 }
 
                 Start(true, false, player->GetGUID());
@@ -717,13 +720,13 @@ public:
             Creature* owner = GetOwner()->ToCreature();
             owner->RemoveAllAurasExceptType(SPELL_AURA_DUMMY);
             owner->CombatStop(true);
-            owner->DeleteThreatList();
-            owner->GetMotionMaster()->Clear(false);
+            owner->GetThreatManager().ClearAllThreat();
+            owner->GetMotionMaster()->Clear();
             owner->GetMotionMaster()->MoveFollow(GetCaster(), 4.0f, 0.0f);
             owner->CastSpell(owner, SPELL_SUBDUED, true);
             GetCaster()->CastSpell(GetCaster(), SPELL_DRAKE_HATCHLING_SUBDUED, true);
             owner->SetFaction(35);
-            owner->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
+            owner->SetImmuneToAll(true);
             owner->DespawnOrUnsummon(3 * MINUTE*IN_MILLISECONDS);
         }
 
@@ -790,9 +793,9 @@ class npc_thassarian : public CreatureScript
 public:
     npc_thassarian() : CreatureScript("npc_thassarian") { }
 
-    struct npc_thassarianAI : public npc_escortAI
+    struct npc_thassarianAI : public EscortAI
     {
-        npc_thassarianAI(Creature* creature) : npc_escortAI(creature)
+        npc_thassarianAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -834,7 +837,7 @@ public:
             Initialize();
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             Player* player = GetPlayerForEscort();
             if (!player)
@@ -869,7 +872,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (arthasInPosition && talbotInPosition)
             {
@@ -1235,26 +1238,29 @@ public:
                 {
                     DoCastVictim(SPELL_SHADOW_BOLT);
                     shadowBoltTimer = urand(5000, 12000);
-                } else shadowBoltTimer -= diff;
+                }
+                else shadowBoltTimer -= diff;
 
                 if (deflectionTimer <= diff)
                 {
                     DoCastVictim(SPELL_DEFLECTION);
                     deflectionTimer = urand(20000, 25000);
-                } else deflectionTimer -= diff;
+                }
+                else deflectionTimer -= diff;
 
                 if (soulBlastTimer <= diff)
                 {
                     DoCastVictim(SPELL_SOUL_BLAST);
-                    soulBlastTimer  = urand(12000, 18000);
-                } else soulBlastTimer -= diff;
+                    soulBlastTimer = urand(12000, 18000);
+                }
+                else soulBlastTimer -= diff;
             }
 
             DoMeleeAttackIfReady();
-       }
+        }
 
-       void JustDied(Unit* killer) override
-       {
+        void JustDied(Unit* killer) override
+        {
             if (!leryssaGUID || !arlosGUID)
                 return;
 
@@ -1272,8 +1278,8 @@ public:
             leryssa->SetWalk(false);
             leryssa->GetMotionMaster()->MovePoint(0, 3722.114502f, 3564.201660f, 477.441437f);
 
-            if (Player* player = killer->ToPlayer())
-                player->RewardPlayerAndGroupAtEvent(NPC_PRINCE_VALANAR, 0);
+            if (killer && killer->GetTypeId() == TYPEID_PLAYER)
+                killer->ToPlayer()->RewardPlayerAndGroupAtEvent(NPC_PRINCE_VALANAR, 0);
         }
     };
 
@@ -1451,13 +1457,13 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             if (me->IsValidAttackTarget(who))
                 AttackStart(who);
         }
 
-        void SpellHit(Unit* pCaster, const SpellInfo* pSpell) override
+        void SpellHit(Unit* pCaster, SpellInfo const* pSpell) override
         {
             if (pSpell->Id == SPELL_ARCANE_CHAINS && pCaster->GetTypeId() == TYPEID_PLAYER && !HealthAbovePct(50) && !bEnslaved)
             {
@@ -1563,11 +1569,11 @@ public:
             DoMeleeAttackIfReady();
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
         }
 
-        void SpellHit(Unit* unit, const SpellInfo* spell) override
+        void SpellHit(Unit* unit, SpellInfo const* spell) override
         {
             if (spell->Id == SPELL_NEURAL_NEEDLE && unit->GetTypeId() == TYPEID_PLAYER)
                 if (Player* player = unit->ToPlayer())
@@ -1634,9 +1640,9 @@ class npc_mootoo_the_younger : public CreatureScript
 public:
     npc_mootoo_the_younger() : CreatureScript("npc_mootoo_the_younger") { }
 
-    struct npc_mootoo_the_youngerAI : public npc_escortAI
+    struct npc_mootoo_the_youngerAI : public EscortAI
     {
-        npc_mootoo_the_youngerAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_mootoo_the_youngerAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override
         {
@@ -1645,11 +1651,11 @@ public:
 
         void JustDied(Unit* /*killer*/) override
         {
-            if (Player* player=GetPlayerForEscort())
+            if (Player* player = GetPlayerForEscort())
                 player->FailQuest(QUEST_ESCAPING_THE_MIST);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             Player* player = GetPlayerForEscort();
             if (!player)
@@ -1723,9 +1729,9 @@ class npc_bonker_togglevolt : public CreatureScript
 public:
     npc_bonker_togglevolt() : CreatureScript("npc_bonker_togglevolt") { }
 
-    struct npc_bonker_togglevoltAI : public npc_escortAI
+    struct npc_bonker_togglevoltAI : public EscortAI
     {
-        npc_bonker_togglevoltAI(Creature* creature) : npc_escortAI(creature)
+        npc_bonker_togglevoltAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -1751,7 +1757,7 @@ public:
 
         void UpdateEscortAI(uint32 /*diff*/) override
         {
-            if (GetAttack() && UpdateVictim())
+            if (IsActiveAttacker() && UpdateVictim())
             {
                 if (Bonker_agro == 0)
                 {
@@ -1763,7 +1769,7 @@ public:
             else Bonker_agro=0;
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             Player* player = GetPlayerForEscort();
             if (!player)
@@ -1860,7 +1866,7 @@ public:
         {
             Initialize();
 
-            GameObject* pTrap = NULL;
+            GameObject* pTrap = nullptr;
             for (uint8 i = 0; i < MammothTrapsNum; ++i)
             {
                 pTrap = me->FindNearestGameObject(MammothTraps[i], 11.0f);
@@ -1899,7 +1905,7 @@ public:
 
             me->DisappearAndDie();
 
-            GameObject* pTrap = NULL;
+            GameObject* pTrap = nullptr;
             for (uint8 i = 0; i < MammothTrapsNum; ++i)
             {
                 pTrap = me->FindNearestGameObject(MammothTraps[i], 11.0f);
@@ -1942,13 +1948,14 @@ public:
 
         void JustDied(Unit* killer) override
         {
-            Player* player = killer->ToPlayer();
-            if (!player)
+            if (!killer || killer->GetTypeId() != TYPEID_PLAYER)
                 return;
+
+            Player* player = killer->ToPlayer();
 
             if (player->GetQuestStatus(QUEST_YOU_RE_NOT_SO_BIG_NOW) == QUEST_STATUS_INCOMPLETE &&
                 (me->HasAura(SPELL_AURA_NOTSOBIG_1) || me->HasAura(SPELL_AURA_NOTSOBIG_2) ||
-                me->HasAura(SPELL_AURA_NOTSOBIG_3) || me->HasAura(SPELL_AURA_NOTSOBIG_4)))
+                    me->HasAura(SPELL_AURA_NOTSOBIG_3) || me->HasAura(SPELL_AURA_NOTSOBIG_4)))
             {
                 Quest const* qInfo = sObjectMgr->GetQuestTemplate(QUEST_YOU_RE_NOT_SO_BIG_NOW);
                 if (qInfo)
@@ -2063,7 +2070,7 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void AttackStart(Unit* /*who*/) override { }
 
@@ -2160,9 +2167,9 @@ enum HiddenCultist
     SAY_HIDDEN_CULTIST_4                        = 3
 };
 
-const char* GOSSIP_ITEM_TOM_HEGGER = "What do you know about the Cult of the Damned?";
-const char* GOSSIP_ITEM_GUARD_MITCHELLS = "How long have you worked for the Cult of the Damned?";
-const char* GOSSIP_ITEM_SALTY_JOHN_THORPE = "I have a reason to believe you're involved in the cultist activity";
+char const* GOSSIP_ITEM_TOM_HEGGER = "What do you know about the Cult of the Damned?";
+char const* GOSSIP_ITEM_GUARD_MITCHELLS = "How long have you worked for the Cult of the Damned?";
+char const* GOSSIP_ITEM_SALTY_JOHN_THORPE = "I have a reason to believe you're involved in the cultist activity";
 
 class npc_hidden_cultist : public CreatureScript
 {
@@ -2290,7 +2297,7 @@ public:
         bool GossipHello(Player* player) override
         {
             uint32 uiGossipText = 0;
-            const char* charGossipItem;
+            char const* charGossipItem;
 
             switch (me->GetEntry())
             {
@@ -2307,7 +2314,6 @@ public:
                     charGossipItem = GOSSIP_ITEM_GUARD_MITCHELLS;
                     break;
                 default:
-                    charGossipItem = "";
                     return false;
             }
 
@@ -2365,7 +2371,7 @@ public:
         {
             if (GetTarget()->isDead())
                 if (Unit* caster = GetCaster())
-                    caster->CastSpell(NULL, SPELL_WINDSOUL_CREDT);
+                    caster->CastSpell(nullptr, SPELL_WINDSOUL_CREDT);
         }
 
         void Register() override
@@ -2377,6 +2383,108 @@ public:
     AuraScript* GetAuraScript() const override
     {
         return new spell_windsoul_totem_aura_AuraScript();
+    }
+};
+
+enum BloodsporeRuination
+{
+    NPC_BLOODMAGE_LAURITH   = 25381,
+    SAY_BLOODMAGE_LAURITH   = 0,
+    EVENT_TALK              = 1,
+    EVENT_RESET_ORIENTATION
+};
+
+class spell_q11719_bloodspore_ruination_45997 : public SpellScriptLoader
+{
+public:
+    spell_q11719_bloodspore_ruination_45997() : SpellScriptLoader("spell_q11719_bloodspore_ruination_45997") { }
+
+    class spell_q11719_bloodspore_ruination_45997_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_q11719_bloodspore_ruination_45997_SpellScript);
+
+        void HandleEffect(SpellEffIndex /*effIndex*/)
+        {
+            if (Unit* caster = GetCaster())
+                if (Creature* laurith = caster->FindNearestCreature(NPC_BLOODMAGE_LAURITH, 100.0f))
+                    laurith->AI()->SetGUID(caster->GetGUID());
+        }
+
+        void Register() override
+        {
+            OnEffectHit += SpellEffectFn(spell_q11719_bloodspore_ruination_45997_SpellScript::HandleEffect, EFFECT_1, SPELL_EFFECT_SEND_EVENT);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_q11719_bloodspore_ruination_45997_SpellScript();
+    }
+};
+
+class npc_bloodmage_laurith : public CreatureScript
+{
+public:
+    npc_bloodmage_laurith() : CreatureScript("npc_bloodmage_laurith") { }
+
+    struct npc_bloodmage_laurithAI : public ScriptedAI
+    {
+        npc_bloodmage_laurithAI(Creature* creature) : ScriptedAI(creature) { }
+
+        void Reset() override
+        {
+            _events.Reset();
+            _playerGUID.Clear();
+        }
+
+        void SetGUID(ObjectGuid const& guid, int32 /*id*/) override
+        {
+            if (!_playerGUID.IsEmpty())
+                return;
+
+            _playerGUID = guid;
+
+            if (Player* player = ObjectAccessor::GetPlayer(*me, _playerGUID))
+                me->SetFacingToObject(player);
+
+            _events.ScheduleEvent(EVENT_TALK, Seconds(1));
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (UpdateVictim())
+            {
+                DoMeleeAttackIfReady();
+                return;
+            }
+
+            _events.Update(diff);
+
+            if (uint32 eventId = _events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                    case EVENT_TALK:
+                        if (Player* player = ObjectAccessor::GetPlayer(*me, _playerGUID))
+                            Talk(SAY_BLOODMAGE_LAURITH, player);
+                        _playerGUID.Clear();
+                        _events.ScheduleEvent(EVENT_RESET_ORIENTATION, Seconds(5));
+                        break;
+                    case EVENT_RESET_ORIENTATION:
+                        me->SetFacingTo(me->GetHomePosition().GetOrientation());
+                        break;
+                }
+            }
+        }
+
+        private:
+            EventMap _events;
+            ObjectGuid _playerGUID;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_bloodmage_laurithAI(creature);
     }
 };
 
@@ -2405,4 +2513,6 @@ void AddSC_borean_tundra()
     new npc_warmage_coldarra();
     new npc_hidden_cultist();
     new spell_windsoul_totem_aura();
+    new spell_q11719_bloodspore_ruination_45997();
+    new npc_bloodmage_laurith();
 }

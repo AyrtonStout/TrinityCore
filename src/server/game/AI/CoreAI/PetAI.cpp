@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,17 +17,20 @@
  */
 
 #include "PetAI.h"
+#include "AIException.h"
+#include "Creature.h"
 #include "Errors.h"
+#include "Group.h"
+#include "Log.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Pet.h"
 #include "Player.h"
 #include "Spell.h"
-#include "ObjectAccessor.h"
 #include "SpellHistory.h"
-#include "SpellMgr.h"
-#include "Creature.h"
-#include "Util.h"
-#include "Group.h"
 #include "SpellInfo.h"
+#include "SpellMgr.h"
+#include "Util.h"
 
 int32 PetAI::Permissible(Creature const* creature)
 {
@@ -43,6 +46,8 @@ int32 PetAI::Permissible(Creature const* creature)
 
 PetAI::PetAI(Creature* c) : CreatureAI(c), i_tracker(TIME_INTERVAL_LOOK)
 {
+    if (!me->GetCharmInfo())
+        throw InvalidAIException("Creature doesn't have a valid charm info");
     UpdateAllies();
 }
 
@@ -67,7 +72,6 @@ void PetAI::_stopAttack()
         me->GetMotionMaster()->Clear();
         me->GetMotionMaster()->MoveIdle();
         me->CombatStop();
-        me->getHostileRefManager().deleteReferences();
         return;
     }
 
@@ -152,7 +156,7 @@ void PetAI::UpdateAI(uint32 diff)
             if (!spellInfo)
                 continue;
 
-            if (me->GetCharmInfo() && me->GetSpellHistory()->HasGlobalCooldown(spellInfo))
+            if (me->GetSpellHistory()->HasGlobalCooldown(spellInfo))
                 continue;
 
             // check spell cooldown
@@ -241,7 +245,7 @@ void PetAI::UpdateAI(uint32 diff)
             SpellCastTargets targets;
             targets.SetUnitTarget(target);
 
-            spell->prepare(&targets);
+            spell->prepare(targets);
         }
 
         // deleted cached Spell objects
@@ -264,7 +268,7 @@ void PetAI::UpdateAllies()
     if (!owner)
         return;
 
-    Group* group = NULL;
+    Group* group = nullptr;
     if (Player* player = owner->ToPlayer())
         group = player->GetGroup();
 
@@ -280,7 +284,7 @@ void PetAI::UpdateAllies()
     m_AllySet.insert(me->GetGUID());
     if (group)                                              //add group
     {
-        for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+        for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
         {
             Player* Target = itr->GetSource();
             if (!Target || !Target->IsInMap(owner) || !group->SameSubGroup(owner->ToPlayer(), Target))
@@ -389,7 +393,7 @@ Unit* PetAI::SelectNextTarget(bool allowAutoSelect) const
 
     // Passive pets don't do next target selection
     if (me->HasReactState(REACT_PASSIVE))
-        return NULL;
+        return nullptr;
 
     // Check pet attackers first so we don't drag a bunch of targets to the owner
     if (Unit* myAttacker = me->getAttackerForHelper())
@@ -398,7 +402,7 @@ Unit* PetAI::SelectNextTarget(bool allowAutoSelect) const
 
     // Not sure why we wouldn't have an owner but just in case...
     if (!me->GetCharmerOrOwner())
-        return NULL;
+        return nullptr;
 
     // Check owner attackers
     if (Unit* ownerAttacker = me->GetCharmerOrOwner()->getAttackerForHelper())
@@ -421,7 +425,7 @@ Unit* PetAI::SelectNextTarget(bool allowAutoSelect) const
     }
 
     // Default - no valid targets
-    return NULL;
+    return nullptr;
 }
 
 void PetAI::HandleReturnMovement()
@@ -457,8 +461,7 @@ void PetAI::HandleReturnMovement()
             me->GetMotionMaster()->MoveFollow(me->GetCharmerOrOwner(), PET_FOLLOW_DIST, me->GetFollowAngle());
         }
     }
-
-    me->ClearInPetCombat();
+    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT); // on player pets, this flag indicates that we're actively going after a target - we're returning, so remove it
 }
 
 void PetAI::DoAttack(Unit* target, bool chase)
@@ -468,12 +471,7 @@ void PetAI::DoAttack(Unit* target, bool chase)
 
     if (me->Attack(target, true))
     {
-        // properly fix fake combat after pet is sent to attack
-        if (Unit* owner = me->GetOwner())
-            owner->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
-
-        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
-
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT); // on player pets, this flag indicates we're actively going after a target - that's what we're doing, so set it
         // Play sound to let the player know the pet is attacking something it picked on its own
         if (me->HasReactState(REACT_AGGRESSIVE) && !me->GetCharmInfo()->IsCommandAttack())
             me->SendPetAIReaction(me->GetGUID());
@@ -484,7 +482,7 @@ void PetAI::DoAttack(Unit* target, bool chase)
             ClearCharmInfoFlags();
             me->GetCharmInfo()->SetIsCommandAttack(oldCmdAttack); // For passive pets commanded to attack so they will use spells
             me->GetMotionMaster()->Clear();
-            me->GetMotionMaster()->MoveChase(target, me->GetPetChaseDistance());
+            me->GetMotionMaster()->MoveChase(target, me->GetPetChaseDistance(), (float)M_PI);
         }
         else // (Stay && ((Aggressive || Defensive) && In Melee Range)))
         {
@@ -548,6 +546,8 @@ bool PetAI::CanAttack(Unit* target)
         return false;
     }
 
+    ASSERT(me->GetCharmInfo());
+
     // Passive - passive pets can attack if told to
     if (me->HasReactState(REACT_PASSIVE))
         return me->GetCharmInfo()->IsCommandAttack();
@@ -568,7 +568,7 @@ bool PetAI::CanAttack(Unit* target)
     if (me->GetVictim() && me->GetVictim() != target)
     {
         // Check if our owner selected this target and clicked "attack"
-        Unit* ownerTarget = NULL;
+        Unit* ownerTarget = nullptr;
         if (Player* owner = me->GetCharmerOrOwner()->ToPlayer())
             ownerTarget = owner->GetSelectedUnit();
         else

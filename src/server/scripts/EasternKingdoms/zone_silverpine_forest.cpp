@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -29,9 +29,11 @@ pyrewood_ambush
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
+#include "CreatureAIImpl.h"
 #include "ScriptedEscortAI.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
+#include "TemporarySummon.h"
 
 /*######
 ## npc_deathstalker_erland
@@ -63,11 +65,11 @@ class npc_deathstalker_erland : public CreatureScript
 public:
     npc_deathstalker_erland() : CreatureScript("npc_deathstalker_erland") { }
 
-    struct npc_deathstalker_erlandAI : public npc_escortAI
+    struct npc_deathstalker_erlandAI : public EscortAI
     {
-        npc_deathstalker_erlandAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_deathstalker_erlandAI(Creature* creature) : EscortAI(creature) { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             Player* player = GetPlayerForEscort();
             if (!player)
@@ -110,7 +112,7 @@ public:
 
         void Reset() override { }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             Talk(SAY_AGGRO, who);
         }
@@ -206,7 +208,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void JustSummoned(Creature* summoned) override
         {
@@ -224,7 +226,7 @@ public:
         {
             if (Creature* summoned = me->SummonCreature(creatureId, PyrewoodSpawnPoints[position][0], PyrewoodSpawnPoints[position][1], PyrewoodSpawnPoints[position][2], PyrewoodSpawnPoints[position][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 15000))
             {
-                Unit* target = NULL;
+                Unit* target = nullptr;
                 if (PlayerGUID)
                     if (Player* player = ObjectAccessor::GetPlayer(*me, PlayerGUID))
                         if (player->IsAlive() && RAND(0, 1))
@@ -234,7 +236,7 @@ public:
                     target = me;
 
                 summoned->SetFaction(FACTION_ENEMY);
-                summoned->AddThreat(target, 32.0f);
+                AddThreat(target, 32.0f, summoned);
                 summoned->AI()->AttackStart(target);
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,12 +16,15 @@
  */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
+#include "GameObject.h"
 #include "GameObjectAI.h"
-#include "SpellScript.h"
-#include "SpellAuraEffects.h"
-#include "Player.h"
+#include "InstanceScript.h"
 #include "nexus.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
+#include "ScriptedCreature.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
 
 enum Spells
 {
@@ -89,11 +92,11 @@ class boss_keristrasza : public CreatureScript
                 _Reset();
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 Talk(SAY_AGGRO);
                 DoCastAOE(SPELL_INTENSE_COLD);
-                _EnterCombat();
+                _JustEngagedWith();
 
                 events.ScheduleEvent(EVENT_CRYSTAL_FIRE_BREATH, 14000);
                 events.ScheduleEvent(EVENT_CRYSTAL_CHAINS_CRYSTALIZE, DUNGEON_MODE(30000, 11000));
@@ -114,9 +117,9 @@ class boss_keristrasza : public CreatureScript
 
             bool CheckContainmentSpheres(bool remove_prison = false)
             {
-                ContainmentSphereGUIDs[0] = instance->GetGuidData(ANOMALUS_CONTAINMET_SPHERE);
-                ContainmentSphereGUIDs[1] = instance->GetGuidData(ORMOROKS_CONTAINMET_SPHERE);
-                ContainmentSphereGUIDs[2] = instance->GetGuidData(TELESTRAS_CONTAINMET_SPHERE);
+                ContainmentSphereGUIDs[0] = instance->GetGuidData(ANOMALUS_CONTAINMENT_SPHERE);
+                ContainmentSphereGUIDs[1] = instance->GetGuidData(ORMOROKS_CONTAINMENT_SPHERE);
+                ContainmentSphereGUIDs[2] = instance->GetGuidData(TELESTRAS_CONTAINMENT_SPHERE);
 
                 for (uint8 i = 0; i < DATA_CONTAINMENT_SPHERES; ++i)
                 {
@@ -135,20 +138,20 @@ class boss_keristrasza : public CreatureScript
             {
                 if (remove)
                 {
-                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                    me->SetImmuneToPC(false);
                     me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     if (me->HasAura(SPELL_FROZEN_PRISON))
                         me->RemoveAurasDueToSpell(SPELL_FROZEN_PRISON);
                 }
                 else
                 {
-                    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                    me->SetImmuneToPC(true);
                     me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     DoCast(me, SPELL_FROZEN_PRISON, false);
                 }
             }
 
-            void SetGUID(ObjectGuid guid, int32 id/* = 0 */) override
+            void SetGUID(ObjectGuid const& guid, int32 id) override
             {
                 if (id == DATA_INTENSE_COLD)
                     _intenseColdList.push_back(guid);
@@ -216,7 +219,7 @@ class boss_keristrasza : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return GetInstanceAI<boss_keristraszaAI>(creature);
+            return GetNexusAI<boss_keristraszaAI>(creature);
         }
 };
 
@@ -248,7 +251,7 @@ public:
 
     GameObjectAI* GetAI(GameObject* go) const override
     {
-        return GetInstanceAI<containment_sphereAI>(go);
+        return GetNexusAI<containment_sphereAI>(go);
     }
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -82,6 +82,8 @@ class ObjectRegistry final
         // non instanceable, only static
         ObjectRegistry() { }
         ~ObjectRegistry() { }
+        ObjectRegistry(ObjectRegistry const&) = delete;
+        ObjectRegistry& operator=(ObjectRegistry const&) = delete;
 };
 
 #endif

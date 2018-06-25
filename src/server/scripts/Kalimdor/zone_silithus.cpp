@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -36,11 +36,18 @@ TO DO: Dragons should use the HandleEmoteCommand(EMOTE_ONESHOT_LIFTOFF) after tr
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
+#include "CreatureAIImpl.h"
+#include "GameObject.h"
 #include "GameObjectAI.h"
 #include "Group.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
+#include "TemporarySummon.h"
 
 /*#####
 # Quest: A Pawn on the Eternal Board
@@ -497,17 +504,17 @@ public:
                         DoCast(player, SPELL_ARCANE_CHANNELING, true);//Arcane Channeling
                         break;
                     case 35:
-                        me->CastSpell(-8088, 1520.43f, 2.67f, SPELL_TIME_STOP, true);
+                        me->CastSpell({ -8088, 1520.43f, 2.67f }, SPELL_TIME_STOP, true);
                         break;
                     case 36:
                         DoCast(player, SPELL_CALL_PRISMATIC_BARRIER, true);
                         break;
                     case 37:
-                        me->SummonGameObject(GO_GATE_OF_AHN_QIRAJ, Position(-8130.f, 1525.f, 17.5f, 0.f), G3D::Quat(), 0);
+                        me->SummonGameObject(GO_GATE_OF_AHN_QIRAJ, Position(-8130.f, 1525.f, 17.5f, 0.f), QuaternionData(), 0);
                         break;
                     case 38:
                         DoCast(player, SPELL_CALL_GLYPHS_OF_WARDING, true);
-                        me->SummonGameObject(GO_GLYPH_OF_AHN_QIRAJ, Position(-8130.f, 1525.f, 17.5f, 0.f), G3D::Quat(), 0);
+                        me->SummonGameObject(GO_GLYPH_OF_AHN_QIRAJ, Position(-8130.f, 1525.f, 17.5f, 0.f), QuaternionData(), 0);
                         break;
                     case 39:
                         Talk(ANACHRONOS_SAY_5, Fandral);
@@ -516,7 +523,7 @@ public:
                         Fandral->CastSpell(me, SPELL_CALL_ANCIENTS, true);
                         break;
                     case 41:
-                        Fandral->SummonGameObject(GO_ROOTS_OF_AHN_QIRAJ, Position(-8130.f, 1525.f, 17.5f, 0.f), G3D::Quat(), 0);
+                        Fandral->SummonGameObject(GO_ROOTS_OF_AHN_QIRAJ, Position(-8130.f, 1525.f, 17.5f, 0.f), QuaternionData(), 0);
                         Fandral->AI()->Talk(FANDRAL_SAY_3);
                         break;
                     case 42:
@@ -547,12 +554,12 @@ public:
                         break;
                     case 50:
                         Fandral->AI()->Talk(FANDRAL_EMOTE_2);
-                        Fandral->CastSpell(-8127, 1525, 17.5f, SPELL_THROW_HAMMER, true);
+                        Fandral->CastSpell({ -8127, 1525, 17.5f }, SPELL_THROW_HAMMER, true);
                         break;
                     case 51:
                     {
                         uint32 entries[4] = { NPC_KALDOREI_INFANTRY, NPC_ANUBISATH_CONQUEROR, NPC_QIRAJI_WASP, NPC_QIRAJI_TANK };
-                        Unit* mob = NULL;
+                        Unit* mob = nullptr;
                         for (uint8 i = 0; i < 4; ++i)
                         {
                             mob = player->FindNearestCreature(entries[i], 50);
@@ -591,8 +598,7 @@ public:
                         me->GetMotionMaster()->MoveCharge(-8117.99f, 1532.24f, 3.94f, 4);
                         break;
                     case 60:
-                        if (player)
-                            Talk(ANACHRONOS_SAY_10, player);
+                        Talk(ANACHRONOS_SAY_10, player);
                         me->GetMotionMaster()->MoveCharge(-8113.46f, 1524.16f, 2.89f, 4);
                         break;
                     case 61:
@@ -616,7 +622,7 @@ public:
                         {
                             Talk(ARYGOS_YELL_1);
                             AnachronosQuestTrigger->AI()->EnterEvadeMode();
-                            eventEnd=true;
+                            eventEnd = true;
                         }
                         break;
                 }
@@ -691,8 +697,8 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
-        void JustDied(Unit* /*slayer*/) override;
+        void JustEngagedWith(Unit* /*who*/) override { }
+        void JustDied(Unit* /*killer*/) override;
 
         void UpdateAI(uint32 diff) override
         {
@@ -739,7 +745,7 @@ public:
             }
             if (!hasTarget)
             {
-                Unit* target = NULL;
+                Unit* target = nullptr;
                 if (me->GetEntry() == NPC_ANUBISATH_CONQUEROR || me->GetEntry() == NPC_QIRAJI_TANK || me->GetEntry() == NPC_QIRAJI_WASP)
                     target = me->FindNearestCreature(NPC_KALDOREI_INFANTRY, 20, true);
                 if (me->GetEntry() == NPC_KALDOREI_INFANTRY)
@@ -867,7 +873,7 @@ public:
 
             if (Group* EventGroup = player->GetGroup())
             {
-                Player* groupMember = NULL;
+                Player* groupMember = nullptr;
 
                 uint8 GroupMemberCount = 0;
                 uint8 DeadMemberCount = 0;
@@ -928,7 +934,7 @@ public:
 
 };
 
-void npc_qiraj_war_spawn::npc_qiraj_war_spawnAI::JustDied(Unit* /*slayer*/)
+void npc_qiraj_war_spawn::npc_qiraj_war_spawnAI::JustDied(Unit* /*killer*/)
 {
     me->DespawnOrUnsummon();
 
@@ -1221,18 +1227,17 @@ class go_wind_stone : public GameObjectScript
                         case NPC_DUKE_WATER:
                         case NPC_DUKE_EARTH:
                         case NPC_DUKE_AIR:
-                            summons->AI()->Talk(SAY_DUKE_AGGRO);
+                            summons->AI()->Talk(SAY_DUKE_AGGRO, player);
                             break;
                         case NPC_ROYAL_FIRE:
                         case NPC_ROYAL_AIR:
                         case NPC_ROYAL_EARTH:
                         case NPC_ROYAL_WATER:
-                            summons->AI()->Talk(YELL_ROYAL_AGGRO);
+                            summons->AI()->Talk(YELL_ROYAL_AGGRO, player);
                             break;
                     }
                     summons->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                    summons->SendMeleeAttackStart(player);
-                    summons->CombatStart(player);
+                    summons->EngageWithTarget(player);
                 }
 
             public:
@@ -1383,6 +1388,47 @@ class go_wind_stone : public GameObjectScript
         }
 };
 
+// 24745 - Summon Templar, Trigger
+// 24747 - Summon Templar Fire, Trigger
+// 24757 - Summon Templar Air, Trigger
+// 24759 - Summon Templar Earth, Trigger
+// 24761 - Summon Templar Water, Trigger
+// 24762 - Summon Duke, Trigger
+// 24766 - Summon Duke Fire, Trigger
+// 24769 - Summon Duke Air, Trigger
+// 24771 - Summon Duke Earth, Trigger
+// 24773 - Summon Duke Water, Trigger
+// 24785 - Summon Royal, Trigger
+// 24787 - Summon Royal Fire, Trigger
+// 24791 - Summon Royal Air, Trigger
+// 24792 - Summon Royal Earth, Trigger
+// 24793 - Summon Royal Water, Trigger
+// 46595 - Summon Ice Stone Lieutenant, Trigger
+class spell_silithus_summon_cultist_periodic : public AuraScript
+{
+    PrepareAuraScript(spell_silithus_summon_cultist_periodic);
+
+    bool Validate(SpellInfo const* spellInfo) override
+    {
+        return ValidateSpellInfo({ spellInfo->Effects[EFFECT_0].TriggerSpell });
+    }
+
+    void PeriodicTick(AuraEffect const* aurEff)
+    {
+        PreventDefaultAction();
+
+        // All these spells trigger a spell that requires reagents; if the
+        // triggered spell is cast as "triggered", reagents are not consumed
+        if (Unit* caster = GetCaster())
+            caster->CastSpell(nullptr, GetSpellInfo()->Effects[aurEff->GetEffIndex()].TriggerSpell, CastSpellExtraArgs(TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_POWER_AND_REAGENT_COST)).SetTriggeringAura(aurEff));
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_silithus_summon_cultist_periodic::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
+};
+
 void AddSC_silithus()
 {
     new go_crystalline_tear();
@@ -1390,4 +1436,5 @@ void AddSC_silithus()
     new npc_anachronos_the_ancient();
     new npc_qiraj_war_spawn();
     new go_wind_stone();
+    RegisterAuraScript(spell_silithus_summon_cultist_periodic);
 }

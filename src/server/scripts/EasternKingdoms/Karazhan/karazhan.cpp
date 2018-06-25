@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -29,11 +29,16 @@ npc_image_of_medivh
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
+#include "InstanceScript.h"
 #include "karazhan.h"
-#include "ScriptedEscortAI.h"
+#include "Log.h"
+#include "Map.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
+#include "ScriptedEscortAI.h"
+#include "ScriptedGossip.h"
+#include "TemporarySummon.h"
 
 enum Spells
 {
@@ -126,9 +131,9 @@ class npc_barnes : public CreatureScript
 public:
     npc_barnes() : CreatureScript("npc_barnes") { }
 
-    struct npc_barnesAI : public npc_escortAI
+    struct npc_barnesAI : public EscortAI
     {
-        npc_barnesAI(Creature* creature) : npc_escortAI(creature)
+        npc_barnesAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             RaidWiped = false;
@@ -177,9 +182,9 @@ public:
             Start(false, false);
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -283,7 +288,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (HasEscortState(STATE_ESCORT_PAUSED))
             {
@@ -309,7 +314,7 @@ public:
                 {
                     if (WipeTimer <= diff)
                     {
-                        Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
+                        Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
                         if (PlayerList.isEmpty())
                             return;
 
@@ -349,6 +354,7 @@ public:
                     break;
                 case GOSSIP_ACTION_INFO_DEF + 2:
                     CloseGossipMenuFor(player);
+                    m_uiEventId = urand(EVENT_OZ, EVENT_RAJ);
                     StartEvent();
                     break;
                 case GOSSIP_ACTION_INFO_DEF + 3:
@@ -429,7 +435,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<npc_image_of_medivhAI>(creature);
+        return GetKarazhanAI<npc_image_of_medivhAI>(creature);
     }
 
     struct npc_image_of_medivhAI : public ScriptedAI
@@ -476,7 +482,7 @@ public:
                 me->DespawnOrUnsummon();
             }
         }
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void MovementInform(uint32 type, uint32 id) override
         {
@@ -554,6 +560,7 @@ public:
                 {
                     arca->GetMotionMaster()->MovePoint(0, -11010.82f, -1761.18f, 156.47f);
                     arca->setActive(true);
+                    arca->SetFarVisible(true);
                     arca->InterruptNonMeleeSpells(true);
                     arca->SetSpeedRate(MOVE_FLIGHT, 2.0f);
                 }
@@ -566,7 +573,7 @@ public:
                 me->SetVisible(false);
                 me->ClearInCombat();
 
-                InstanceMap::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
+                InstanceMap::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
                 for (InstanceMap::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                 {
                     if (i->GetSource()->IsAlive())
@@ -579,7 +586,7 @@ public:
             }
             case 15:
                 if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
-                    arca->DealDamage(arca, arca->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    arca->KillSelf();
                 return 5000;
             default:
                 return 9999999;

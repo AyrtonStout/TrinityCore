@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,14 +16,16 @@
  */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
+#include "GameObject.h"
+#include "GameObjectAI.h"
+#include "InstanceScript.h"
 #include "magtheridons_lair.h"
+#include "PassiveAI.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
+#include "SpellAuraEffects.h"
 #include "SpellInfo.h"
 #include "SpellScript.h"
-#include "SpellAuraEffects.h"
-#include "PassiveAI.h"
-#include "GameObjectAI.h"
 
 enum Yells
 {
@@ -137,7 +139,6 @@ class boss_magtheridon : public CreatureScript
 
             void CombatStart()
             {
-                events.SetPhase(PHASE_2);
                 events.CancelEvent(EVENT_START_FIGHT);
                 events.CancelEvent(EVENT_NEARLY_EMOTE);
                 events.ScheduleEvent(EVENT_RELEASED, Seconds(6));
@@ -218,10 +219,13 @@ class boss_magtheridon : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
-                if (me->HasUnitState(UNIT_STATE_CASTING))
+                if (!events.IsInPhase(PHASE_BANISH) && !events.IsInPhase(PHASE_1) && !UpdateVictim())
                     return;
 
                 events.Update(diff);
+
+                if (me->HasUnitState(UNIT_STATE_CASTING))
+                    return;
 
                 while (uint32 eventId = events.ExecuteEvent())
                 {
@@ -235,19 +239,21 @@ class boss_magtheridon : public CreatureScript
                             events.Repeat(Seconds(10));
                             break;
                         case EVENT_BLAZE:
-                            me->CastCustomSpell(SPELL_BLAZE_TARGET, SPELLVALUE_MAX_TARGETS, 1);
+                            DoCastAOE(SPELL_BLAZE_TARGET, { SPELLVALUE_MAX_TARGETS, 1 });
                             events.Repeat(Seconds(20));
                             break;
                         case EVENT_QUAKE:
-                            me->CastCustomSpell(SPELL_QUAKE, SPELLVALUE_MAX_TARGETS, 5);
+                            DoCastAOE(SPELL_QUAKE, { SPELLVALUE_MAX_TARGETS, 5 });
                             events.Repeat(Seconds(60));
                             break;
                         case EVENT_START_FIGHT:
                             CombatStart();
                             break;
                         case EVENT_RELEASED:
-                            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NOT_SELECTABLE);
-                            me->SetInCombatWithZone();
+                            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            me->SetImmuneToPC(false);
+                            DoZoneInCombat();
+                            events.SetPhase(PHASE_2);
                             instance->SetData(DATA_MANTICRON_CUBE, ACTION_ENABLE);
                             events.ScheduleEvent(EVENT_CLEAVE, Seconds(10));
                             events.ScheduleEvent(EVENT_BLAST_NOVA, Seconds(60));
@@ -291,9 +297,6 @@ class boss_magtheridon : public CreatureScript
                         return;
                 }
 
-                if (!UpdateVictim())
-                    return;
-
                 DoMeleeAttackIfReady();
             }
 
@@ -304,7 +307,7 @@ class boss_magtheridon : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return GetInstanceAI<boss_magtheridonAI>(creature);
+            return GetMagtheridonsLairAI<boss_magtheridonAI>(creature);
         }
 };
 
@@ -327,7 +330,7 @@ class npc_hellfire_channeler : public CreatureScript
                 me->SetReactState(REACT_DEFENSIVE);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 me->InterruptNonMeleeSpells(false);
 
@@ -344,6 +347,10 @@ class npc_hellfire_channeler : public CreatureScript
             void JustDied(Unit* /*killer*/) override
             {
                 DoCastAOE(SPELL_SOUL_TRANSFER);
+
+                // Channelers killed by "Hit Kill" need trigger combat event too. It's needed for Cata+
+                if (Creature* magtheridon = _instance->GetCreature(DATA_MAGTHERIDON))
+                    magtheridon->AI()->DoAction(ACTION_START_CHANNELERS_EVENT);
             }
 
             void JustSummoned(Creature* summon) override
@@ -351,7 +358,7 @@ class npc_hellfire_channeler : public CreatureScript
                 if (Creature* magtheridon = _instance->GetCreature(DATA_MAGTHERIDON))
                     magtheridon->AI()->JustSummoned(summon);
 
-                summon->SetInCombatWithZone();
+                DoZoneInCombat(summon);
             }
 
             void EnterEvadeMode(EvadeReason /*why*/) override
@@ -422,7 +429,7 @@ class npc_hellfire_channeler : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return GetInstanceAI<npc_hellfire_channelerAI>(creature);
+            return GetMagtheridonsLairAI<npc_hellfire_channelerAI>(creature);
         }
 };
 
@@ -455,7 +462,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return new npc_magtheridon_roomAI(creature);
+        return GetMagtheridonsLairAI<npc_magtheridon_roomAI>(creature);
     }
 };
 
@@ -474,16 +481,16 @@ public:
                 return true;
 
             if (Creature* trigger = player->FindNearestCreature(NPC_HELFIRE_RAID_TRIGGER, 10.0f))
-                trigger->CastSpell((Unit*)nullptr, SPELL_SHADOW_GRASP_VISUAL);
+                trigger->CastSpell(nullptr, SPELL_SHADOW_GRASP_VISUAL);
 
-            player->CastSpell((Unit*)nullptr, SPELL_SHADOW_GRASP, true);
+            player->CastSpell(nullptr, SPELL_SHADOW_GRASP, true);
             return true;
         }
     };
 
     GameObjectAI* GetAI(GameObject* go) const override
     {
-        return new go_manticron_cubeAI(go);
+        return GetMagtheridonsLairAI<go_manticron_cubeAI>(go);
     }
 };
 
@@ -499,9 +506,7 @@ class spell_magtheridon_blaze_target : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spell*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_BLAZE))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_BLAZE });
             }
 
             void HandleAura()
@@ -534,9 +539,7 @@ class spell_magtheridon_shadow_grasp : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spell*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_MIND_EXHAUSTION))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_MIND_EXHAUSTION });
             }
 
             void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
@@ -570,10 +573,11 @@ class spell_magtheridon_shadow_grasp_visual : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spell*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_SHADOW_CAGE)
-                    || !sSpellMgr->GetSpellInfo(SPELL_SHADOW_GRASP_VISUAL))
-                    return false;
-                return true;
+                return ValidateSpellInfo(
+                {
+                    SPELL_SHADOW_CAGE,
+                    SPELL_SHADOW_GRASP_VISUAL
+                });
             }
 
             void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -33,11 +33,13 @@ npc_wizzlecrank_shredder
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
-#include "ScriptedEscortAI.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
+#include "ScriptedEscortAI.h"
+#include "ScriptedGossip.h"
 #include "SpellInfo.h"
+#include "TemporarySummon.h"
 
 /*######
 ## npc_beaten_corpse
@@ -99,13 +101,13 @@ class npc_gilthares : public CreatureScript
 public:
     npc_gilthares() : CreatureScript("npc_gilthares") { }
 
-    struct npc_giltharesAI : public npc_escortAI
+    struct npc_giltharesAI : public EscortAI
     {
-        npc_giltharesAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_giltharesAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             Player* player = GetPlayerForEscort();
             if (!player)
@@ -135,7 +137,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             //not always use
             if (rand32() % 4)
@@ -218,7 +220,7 @@ public:
         void DoFriend()
         {
             me->RemoveAllAuras();
-            me->DeleteThreatList();
+            me->GetThreatManager().ClearAllThreat();
             me->CombatStop(true);
 
             me->StopMoving();
@@ -228,7 +230,7 @@ public:
             me->HandleEmoteCommand(EMOTE_ONESHOT_SALUTE);
         }
 
-        void SpellHit(Unit* /*caster*/, const SpellInfo* spell) override
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
         {
             if (spell->Id == SPELL_FLARE || spell->Id == SPELL_FOLLY)
             {
@@ -239,7 +241,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
@@ -370,7 +372,7 @@ public:
         {
             if (EventInProgress)
             {
-                Player* warrior = NULL;
+                Player* warrior = nullptr;
 
                 if (PlayerGUID)
                     warrior = ObjectAccessor::GetPlayer(*me, PlayerGUID);
@@ -485,7 +487,7 @@ public:
                                 Talk(SAY_TWIGGY_FLATHEAD_OVER);
                                 Reset();
                             }
-                            else if (creature) // Makes BIG WILL attackable.
+                            else // Makes BIG WILL attackable.
                             {
                                 creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                                 creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
@@ -528,33 +530,21 @@ class npc_wizzlecrank_shredder : public CreatureScript
 public:
     npc_wizzlecrank_shredder() : CreatureScript("npc_wizzlecrank_shredder") { }
 
-    struct npc_wizzlecrank_shredderAI : public npc_escortAI
+    struct npc_wizzlecrank_shredderAI : public EscortAI
     {
-        npc_wizzlecrank_shredderAI(Creature* creature) : npc_escortAI(creature)
+        npc_wizzlecrank_shredderAI(Creature* creature) : EscortAI(creature)
         {
             IsPostEvent = false;
             PostEventTimer = 1000;
             PostEventCount = 0;
+            me->SetReactState(REACT_DEFENSIVE);
         }
 
         bool IsPostEvent;
         uint32 PostEventTimer;
         uint32 PostEventCount;
 
-        void Reset() override
-        {
-            if (!HasEscortState(STATE_ESCORT_ESCORTING))
-            {
-                if (me->GetStandState() == UNIT_STAND_STATE_DEAD)
-                     me->SetStandState(UNIT_STAND_STATE_STAND);
-
-                IsPostEvent = false;
-                PostEventTimer = 1000;
-                PostEventCount = 0;
-            }
-        }
-
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -577,7 +567,7 @@ public:
             }
         }
 
-        void WaypointStart(uint32 PointId) override
+        void WaypointStarted(uint32 PointId, uint32 /*pathId*/) override
         {
             Player* player = GetPlayerForEscort();
 
@@ -607,43 +597,44 @@ public:
 
         void UpdateEscortAI(uint32 Diff) override
         {
-            if (!UpdateVictim())
+            if (UpdateVictim())
             {
-                if (IsPostEvent)
-                {
-                    if (PostEventTimer <= Diff)
-                    {
-                        switch (PostEventCount)
-                        {
-                            case 0:
-                                Talk(SAY_PROGRESS_2);
-                                break;
-                            case 1:
-                                Talk(SAY_PROGRESS_3);
-                                break;
-                            case 2:
-                                Talk(SAY_END);
-                                break;
-                            case 3:
-                                if (Player* player = GetPlayerForEscort())
-                                {
-                                    player->GroupEventHappens(QUEST_ESCAPE, me);
-                                    me->SummonCreature(NPC_PILOT_WIZZ, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 180000);
-                                }
-                                break;
-                        }
-
-                        ++PostEventCount;
-                        PostEventTimer = 5000;
-                    }
-                    else
-                        PostEventTimer -= Diff;
-                }
-
+                DoMeleeAttackIfReady();
                 return;
             }
 
-            DoMeleeAttackIfReady();
+            if (!IsPostEvent)
+                return;
+
+            if (PostEventTimer > Diff)
+            {
+                PostEventTimer -= Diff;
+                return;
+            }
+
+            switch (PostEventCount)
+            {
+                case 0:
+                    Talk(SAY_PROGRESS_2);
+                    break;
+                case 1:
+                    Talk(SAY_PROGRESS_3);
+                    break;
+                case 2:
+                    Talk(SAY_END);
+                    break;
+                case 3:
+                    if (Player* player = GetPlayerForEscort())
+                    {
+                        player->GroupEventHappens(QUEST_ESCAPE, me);
+                        me->DespawnOrUnsummon(3min);
+                        me->SummonCreature(NPC_PILOT_WIZZ, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 180000);
+                    }
+                    break;
+            }
+
+            ++PostEventCount;
+            PostEventTimer = 5000;
         }
 
         void QuestAccept(Player* player, Quest const* quest) override
@@ -652,6 +643,7 @@ public:
             {
                 me->SetFaction(FACTION_RATCHET);
                 Talk(SAY_START);
+                SetDespawnAtEnd(false);
                 Start(true, false, player->GetGUID());
             }
         }

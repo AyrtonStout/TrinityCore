@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -30,11 +30,13 @@ npc_taretha
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
-#include "ScriptedEscortAI.h"
+#include "InstanceScript.h"
+#include "ObjectAccessor.h"
 #include "old_hillsbrad.h"
+#include "Map.h"
 #include "Player.h"
+#include "ScriptedEscortAI.h"
+#include "ScriptedGossip.h"
 
 enum Erozion
 {
@@ -100,7 +102,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<npc_erozionAI>(creature);
+        return GetOldHillsbradAI<npc_erozionAI>(creature);
     }
 };
 
@@ -195,14 +197,15 @@ class npc_thrall_old_hillsbrad : public CreatureScript
 public:
     npc_thrall_old_hillsbrad() : CreatureScript("npc_thrall_old_hillsbrad") { }
 
-    struct npc_thrall_old_hillsbradAI : public npc_escortAI
+    struct npc_thrall_old_hillsbradAI : public EscortAI
     {
-        npc_thrall_old_hillsbradAI(Creature* creature) : npc_escortAI(creature)
+        npc_thrall_old_hillsbradAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             instance = creature->GetInstanceScript();
             HadMount = false;
             me->setActive(true);
+            me->SetFarVisible(true);
         }
 
         void Initialize()
@@ -215,7 +218,7 @@ public:
         bool LowHp;
         bool HadMount;
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -349,10 +352,10 @@ public:
                 case 106:
                     {
                         //trigger taretha to run down outside
-                        if (Creature* Taretha = instance->instance->GetCreature(instance->GetGuidData(DATA_TARETHA)))
+                        if (Creature* Taretha = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TARETHA)))
                         {
                             if (Player* player = GetPlayerForEscort())
-                                ENSURE_AI(npc_escortAI, (Taretha->AI()))->Start(false, true, player->GetGUID());
+                                ENSURE_AI(EscortAI, (Taretha->AI()))->Start(false, true, player->GetGUID());
                         }
 
                         //kill credit Creature for quest
@@ -409,7 +412,7 @@ public:
             me->Dismount();
             me->SetSpeedRate(MOVE_RUN, SPEED_RUN);
         }
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             Talk(SAY_TH_RANDOM_AGGRO);
             if (me->IsMounted())
@@ -440,12 +443,12 @@ public:
         {
             Talk(SAY_TH_RANDOM_KILL);
         }
-        void JustDied(Unit* slayer) override
+        void JustDied(Unit* killer) override
         {
             instance->SetData(TYPE_THRALL_EVENT, FAIL);
 
             // Don't do a yell if he kills self (if player goes too far or at the end).
-            if (slayer == me)
+            if (killer == me)
                 return;
 
             Talk(SAY_TH_RANDOM_DIE);
@@ -453,7 +456,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (!UpdateVictim())
                 return;
@@ -541,7 +544,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<npc_thrall_old_hillsbradAI>(creature);
+        return GetOldHillsbradAI<npc_thrall_old_hillsbradAI>(creature);
     }
 };
 
@@ -562,16 +565,16 @@ class npc_taretha : public CreatureScript
 public:
     npc_taretha() : CreatureScript("npc_taretha") { }
 
-    struct npc_tarethaAI : public npc_escortAI
+    struct npc_tarethaAI : public EscortAI
     {
-        npc_tarethaAI(Creature* creature) : npc_escortAI(creature)
+        npc_tarethaAI(Creature* creature) : EscortAI(creature)
         {
             instance = creature->GetInstanceScript();
         }
 
         InstanceScript* instance;
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -585,11 +588,11 @@ public:
         }
 
         void Reset() override { }
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
         }
 
         bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
@@ -612,7 +615,7 @@ public:
                     if (instance->GetGuidData(DATA_EPOCH).IsEmpty())
                         me->SummonCreature(ENTRY_EPOCH, 2639.13f, 698.55f, 65.43f, 4.59f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 120000);
 
-                    if (Creature* thrall = (ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THRALL))))
+                    if (Creature* thrall = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THRALL)))
                         ENSURE_AI(npc_thrall_old_hillsbrad::npc_thrall_old_hillsbradAI, thrall->AI())->StartWP();
                 }
             }
@@ -632,7 +635,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<npc_tarethaAI>(creature);
+        return GetOldHillsbradAI<npc_tarethaAI>(creature);
     }
 };
 

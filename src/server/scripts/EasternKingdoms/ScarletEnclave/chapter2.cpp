@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,11 +16,13 @@
  */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedEscortAI.h"
-#include "Player.h"
-#include "SpellInfo.h"
 #include "CreatureTextMgr.h"
+#include "GameObject.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
+#include "ScriptedEscortAI.h"
+#include "SpellInfo.h"
 
 //How to win friends and influence enemies
 // texts signed for creature 28939 but used for 28939, 28940, 28610
@@ -74,7 +76,7 @@ public:
             me->RestoreFaction();
         }
 
-        void SpellHit(Unit* caster, const SpellInfo* spell) override
+        void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
             if (spell->Id == SPELL_PERSUASIVE_STRIKE && caster->GetTypeId() == TYPEID_PLAYER && me->IsAlive() && !speechCounter)
             {
@@ -91,7 +93,7 @@ public:
                         me->SetReactState(REACT_PASSIVE);
                         DoCastAOE(SPELL_THREAT_PULSE, true);
 
-                        sCreatureTextMgr->SendChat(me, SAY_PERSUADE_RAND, NULL, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
+                        sCreatureTextMgr->SendChat(me, SAY_PERSUADE_RAND, nullptr, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
                         Talk(SAY_CRUSADER);
                     }
                 }
@@ -134,13 +136,13 @@ public:
                             break;
 
                         case 5:
-                            sCreatureTextMgr->SendChat(me, SAY_PERSUADED5, NULL, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
+                            sCreatureTextMgr->SendChat(me, SAY_PERSUADED5, nullptr, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_NORMAL, 0, TEAM_OTHER, false, player);
                             speechTimer = 8000;
                             break;
 
                         case 6:
                             Talk(SAY_PERSUADED6);
-                            player->Kill(me);
+                            Unit::Kill(player, me);
                             speechCounter = 0;
                             player->GroupEventHappens(QUEST_HOW_TO_WIN_FRIENDS, me);
                             return;
@@ -199,9 +201,9 @@ class npc_koltira_deathweaver : public CreatureScript
 public:
     npc_koltira_deathweaver() : CreatureScript("npc_koltira_deathweaver") { }
 
-    struct npc_koltira_deathweaverAI : public npc_escortAI
+    struct npc_koltira_deathweaverAI : public EscortAI
     {
-        npc_koltira_deathweaverAI(Creature* creature) : npc_escortAI(creature)
+        npc_koltira_deathweaverAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             me->SetReactState(REACT_DEFENSIVE);
@@ -226,7 +228,7 @@ public:
             }
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -268,7 +270,7 @@ public:
             if (summoned->GetEntry() == NPC_HIGH_INQUISITOR_VALROTH)
                 valrothGUID = summoned->GetGUID();
 
-            summoned->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+            summoned->SetImmuneToPC(false);
         }
 
         void SummonAcolyte(uint32 uiAmount)
@@ -279,7 +281,7 @@ public:
 
         void UpdateAI(uint32 uiDiff) override
         {
-            npc_escortAI::UpdateAI(uiDiff);
+            EscortAI::UpdateAI(uiDiff);
 
             if (HasEscortState(STATE_ESCORT_PAUSED))
             {
@@ -406,7 +408,7 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             Talk(SAY_TREE2);
             me->Dismount();
@@ -507,7 +509,7 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             Talk(SAY_VALROTH_AGGRO);
             DoCast(who, SPELL_VALROTH_SMITE);
@@ -548,7 +550,8 @@ public:
         void JustDied(Unit* killer) override
         {
             Talk(SAY_VALROTH_DEATH);
-            killer->CastSpell(me, SPELL_SUMMON_VALROTH_REMAINS, true);
+            if (killer)
+                killer->CastSpell(me, SPELL_SUMMON_VALROTH_REMAINS, true);
         }
     };
 
@@ -607,7 +610,7 @@ public:
         {
             Initialize();
 
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetImmuneToPC(true);
         }
 
         bool MeetQuestCondition(Player* player)
@@ -685,7 +688,7 @@ public:
 
                     switch (ExecuteSpeech_Counter)
                     {
-                        case 0: 
+                        case 0:
                             Talk(SAY_EXEC_START, player);
                             break;
                         case 1:
@@ -716,7 +719,7 @@ public:
                         case 9:
                             Talk(SAY_EXEC_TIME, player);
                             me->SetStandState(UNIT_STAND_STATE_KNEEL);
-                            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                            me->SetImmuneToPC(false);
                             break;
                         case 10:
                             Talk(SAY_EXEC_WAITING, player);

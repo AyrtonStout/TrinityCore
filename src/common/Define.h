@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@
 #endif
 
 #if TRINITY_PLATFORM == TRINITY_PLATFORM_WINDOWS
-#  define TRINITY_PATH_MAX MAX_PATH
+#  define TRINITY_PATH_MAX 260
 #  define _USE_MATH_DEFINES
 #  ifndef DECLSPEC_NORETURN
 #    define DECLSPEC_NORETURN __declspec(noreturn)

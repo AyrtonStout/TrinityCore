@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,7 +21,6 @@
 #include "Define.h"
 #include "Duration.h"
 #include <limits>
-#include <random>
 
 /* Return a random number in the range min..max. */
 TC_COMMON_API int32 irand(int32 min, int32 max);

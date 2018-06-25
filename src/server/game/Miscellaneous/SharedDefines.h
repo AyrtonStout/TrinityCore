@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -21,7 +21,8 @@
 
 #include "Define.h"
 #include "DetourNavMesh.h"
-#include <cassert>
+
+float const GROUND_HEIGHT_TOLERANCE = 0.05f; // Extra tolerance to z position to check if it is in air or on ground.
 
 enum SpellEffIndex : uint8
 {
@@ -245,12 +246,11 @@ enum SpellSchools
     SPELL_SCHOOL_NATURE                 = 3,
     SPELL_SCHOOL_FROST                  = 4,
     SPELL_SCHOOL_SHADOW                 = 5,
-    SPELL_SCHOOL_ARCANE                 = 6
+    SPELL_SCHOOL_ARCANE                 = 6,
+    MAX_SPELL_SCHOOL                    = 7
 };
 
-#define MAX_SPELL_SCHOOL                  7
-
-enum SpellSchoolMask
+enum SpellSchoolMask : uint32
 {
     SPELL_SCHOOL_MASK_NONE    = 0x00,                       // not exist
     SPELL_SCHOOL_MASK_NORMAL  = (1 << SPELL_SCHOOL_NORMAL), // PHYSICAL (Armor)
@@ -301,6 +301,12 @@ enum SpellCategory
 {
     SPELL_CATEGORY_FOOD             = 11,
     SPELL_CATEGORY_DRINK            = 59
+};
+
+enum SpellVisualKit
+{
+    SPELL_VISUAL_KIT_FOOD           = 406,
+    SPELL_VISUAL_KIT_DRINK          = 438
 };
 
 const uint32 ItemQualityColors[MAX_ITEM_QUALITY] =
@@ -421,7 +427,7 @@ enum SpellAttr2
     SPELL_ATTR2_UNK25                            = 0x02000000, // 25
     SPELL_ATTR2_UNAFFECTED_BY_AURA_SCHOOL_IMMUNE = 0x04000000, // 26 unaffected by school immunity
     SPELL_ATTR2_UNK27                            = 0x08000000, // 27
-    SPELL_ATTR2_IGNORE_ITEM_CHECK                = 0x10000000, // 28 Spell is cast without checking item requirements (charges/reagents/totem)
+    SPELL_ATTR2_UNK28                            = 0x10000000, // 28
     SPELL_ATTR2_CANT_CRIT                        = 0x20000000, // 29 Spell can't crit
     SPELL_ATTR2_TRIGGERED_CAN_TRIGGER_PROC       = 0x40000000, // 30 spell can trigger even if triggered
     SPELL_ATTR2_FOOD_BUFF                        = 0x80000000  // 31 Food or Drink Buff (like Well Fed)
@@ -430,7 +436,7 @@ enum SpellAttr2
 enum SpellAttr3
 {
     SPELL_ATTR3_UNK0                             = 0x00000001, //  0
-    SPELL_ATTR3_UNK1                             = 0x00000002, //  1
+    SPELL_ATTR3_IGNORE_PROC_SUBCLASS_MASK        = 0x00000002, //  1 Ignores subclass mask check when checking proc
     SPELL_ATTR3_UNK2                             = 0x00000004, //  2
     SPELL_ATTR3_BLOCKABLE_SPELL                  = 0x00000008, //  3 Only dmg class melee in 3.1.3
     SPELL_ATTR3_IGNORE_RESURRECTION_TIMER        = 0x00000010, //  4 you don't have to wait to be resurrected with these spells
@@ -467,7 +473,7 @@ enum SpellAttr4
 {
     SPELL_ATTR4_IGNORE_RESISTANCES               = 0x00000001, //  0 spells with this attribute will completely ignore the target's resistance (these spells can't be resisted)
     SPELL_ATTR4_PROC_ONLY_ON_CASTER              = 0x00000002, //  1 proc only on effects with TARGET_UNIT_CASTER?
-    SPELL_ATTR4_UNK2                             = 0x00000004, //  2
+    SPELL_ATTR4_FADES_WHILE_LOGGED_OUT           = 0x00000004, //  2 duration is removed from aura while player is logged out
     SPELL_ATTR4_UNK3                             = 0x00000008, //  3
     SPELL_ATTR4_UNK4                             = 0x00000010, //  4 This will no longer cause guards to attack on use??
     SPELL_ATTR4_UNK5                             = 0x00000020, //  5
@@ -488,11 +494,11 @@ enum SpellAttr4
     SPELL_ATTR4_NOT_CHECK_SELFCAST_POWER         = 0x00100000, // 20 supersedes message "More powerful spell applied" for self casts.
     SPELL_ATTR4_UNK21                            = 0x00200000, // 21 Pally aura, dk presence, dudu form, warrior stance, shadowform, hunter track
     SPELL_ATTR4_UNK22                            = 0x00400000, // 22 Seal of Command (42058, 57770) and Gymer's Smash 55426
-    SPELL_ATTR4_UNK23                            = 0x00800000, // 23
+    SPELL_ATTR4_CANT_TRIGGER_ITEM_SPELLS         = 0x00800000, // 23 spells with this flag should not trigger item spells / enchants (mostly in conjunction with SPELL_ATTR0_STOP_ATTACK_TARGET)
     SPELL_ATTR4_UNK24                            = 0x01000000, // 24 some shoot spell
     SPELL_ATTR4_IS_PET_SCALING                   = 0x02000000, // 25 pet scaling auras
     SPELL_ATTR4_CAST_ONLY_IN_OUTLAND             = 0x04000000, // 26 Can only be used in Outland.
-    SPELL_ATTR4_UNK27                            = 0x08000000, // 27
+    SPELL_ATTR4_INHERIT_CRIT_FROM_AURA           = 0x08000000, // 27 Volley, Arcane Missiles, Penance -> related to critical on channeled periodical damage spell
     SPELL_ATTR4_UNK28                            = 0x10000000, // 28 Aimed Shot
     SPELL_ATTR4_UNK29                            = 0x20000000, // 29
     SPELL_ATTR4_UNK30                            = 0x40000000, // 30
@@ -503,7 +509,7 @@ enum SpellAttr5
 {
     SPELL_ATTR5_CAN_CHANNEL_WHEN_MOVING          = 0x00000001, //  0 available casting channel spell when moving
     SPELL_ATTR5_NO_REAGENT_WHILE_PREP            = 0x00000002, //  1 not need reagents if UNIT_FLAG_PREPARATION
-    SPELL_ATTR5_UNK2                             = 0x00000004, //  2
+    SPELL_ATTR5_REMOVE_ON_ARENA_ENTER            = 0x00000004, //  2 remove this aura on arena enter
     SPELL_ATTR5_USABLE_WHILE_STUNNED             = 0x00000008, //  3 usable while stunned
     SPELL_ATTR5_UNK4                             = 0x00000010, //  4
     SPELL_ATTR5_SINGLE_TARGET_SPELL              = 0x00000020, //  5 Only one target can be apply at a time
@@ -527,7 +533,7 @@ enum SpellAttr5
     SPELL_ATTR5_UNK23                            = 0x00800000, // 23
     SPELL_ATTR5_UNK24                            = 0x01000000, // 24
     SPELL_ATTR5_UNK25                            = 0x02000000, // 25
-    SPELL_ATTR5_UNK26                            = 0x04000000, // 26 aoe related - Boulder, Cannon, Corpse Explosion, Fire Nova, Flames, Frost Bomb, Living Bomb, Seed of Corruption, Starfall, Thunder Clap, Volley
+    SPELL_ATTR5_SKIP_CHECKCAST_LOS_CHECK         = 0x04000000, // 26 aoe related - Boulder, Cannon, Corpse Explosion, Fire Nova, Flames, Frost Bomb, Living Bomb, Seed of Corruption, Starfall, Thunder Clap, Volley
     SPELL_ATTR5_DONT_SHOW_AURA_IF_SELF_CAST      = 0x08000000, // 27 Auras with this attribute are not visible on units that are the caster
     SPELL_ATTR5_DONT_SHOW_AURA_IF_NOT_SELF_CAST  = 0x10000000, // 28 Auras with this attribute are not visible on units that are not the caster
     SPELL_ATTR5_UNK29                            = 0x20000000, // 29
@@ -542,7 +548,7 @@ enum SpellAttr6
     SPELL_ATTR6_IGNORE_CASTER_AURAS              = 0x00000004, //  2
     SPELL_ATTR6_ASSIST_IGNORE_IMMUNE_FLAG        = 0x00000008, //  3 skips checking UNIT_FLAG_IMMUNE_TO_PC and UNIT_FLAG_IMMUNE_TO_NPC flags on assist
     SPELL_ATTR6_UNK4                             = 0x00000010, //  4
-    SPELL_ATTR6_UNK5                             = 0x00000020, //  5
+    SPELL_ATTR6_DONT_CONSUME_PROC_CHARGES        = 0x00000020, //  5 dont consume proc charges
     SPELL_ATTR6_USE_SPELL_CAST_EVENT             = 0x00000040, //  6 Auras with this attribute trigger SPELL_CAST combat log event instead of SPELL_AURA_START (clientside attribute)
     SPELL_ATTR6_UNK7                             = 0x00000080, //  7
     SPELL_ATTR6_CANT_TARGET_CROWD_CONTROLLED     = 0x00000100, //  8
@@ -564,9 +570,9 @@ enum SpellAttr6
     SPELL_ATTR6_CAN_TARGET_UNTARGETABLE          = 0x01000000, // 24
     SPELL_ATTR6_NOT_RESET_SWING_IF_INSTANT       = 0x02000000, // 25 Exorcism, Flash of Light
     SPELL_ATTR6_UNK26                            = 0x04000000, // 26 related to player castable positive buff
-    SPELL_ATTR6_UNK27                            = 0x08000000, // 27
+    SPELL_ATTR6_LIMIT_PCT_HEALING_MODS           = 0x08000000, // 27 some custom rules - complicated
     SPELL_ATTR6_UNK28                            = 0x10000000, // 28 Death Grip
-    SPELL_ATTR6_NO_DONE_PCT_DAMAGE_MODS          = 0x20000000, // 29 ignores done percent damage mods?
+    SPELL_ATTR6_LIMIT_PCT_DAMAGE_MODS            = 0x20000000, // 29 ignores done percent damage mods? some custom rules - complicated
     SPELL_ATTR6_UNK30                            = 0x40000000, // 30
     SPELL_ATTR6_IGNORE_CATEGORY_COOLDOWN_MODS    = 0x80000000  // 31 Spells with this attribute skip applying modifiers to category cooldowns
 };
@@ -1254,7 +1260,7 @@ enum AuraStateType
     (1<<(AURA_STATE_CONFLAGRATE-1))|(1<<(AURA_STATE_DEADLY_POISON-1)))
 
 // Spell mechanics
-enum Mechanics
+enum Mechanics : uint32
 {
     MECHANIC_NONE             = 0,
     MECHANIC_CHARM            = 1,
@@ -1288,7 +1294,7 @@ enum Mechanics
     MECHANIC_IMMUNE_SHIELD    = 29,                         // Divine (Blessing) Shield/Protection and Ice Block
     MECHANIC_SAPPED           = 30,
     MECHANIC_ENRAGED          = 31,
-    MAX_MECHANIC = 32
+    MAX_MECHANIC              = 32
 };
 
 // Used for spell 42292 Immune Movement Impairment and Loss of Control (0x49967ca6)
@@ -1444,7 +1450,7 @@ enum Targets
     TARGET_DEST_CHANNEL_CASTER         = 106,
     TARGET_UNK_DEST_AREA_UNK_107       = 107, // not enough info - only generic spells avalible
     TARGET_GAMEOBJECT_CONE             = 108,
-    TARGET_DEST_UNK_110                = 110, // 1 spell
+    TARGET_UNIT_CONE_ENTRY_110         = 110, // 1 spell
     TOTAL_SPELL_TARGETS
 };
 
@@ -1554,6 +1560,16 @@ enum GameObjectDynamicLowFlags
     GO_DYNFLAG_LO_SPARKLE           = 0x08,                 // makes GO sparkle
     GO_DYNFLAG_LO_STOPPED           = 0x10                  // Transport is stopped
 };
+
+// client side GO show states
+enum GOState : uint8
+{
+    GO_STATE_ACTIVE             = 0,                        // show in world as used and not reset (closed door open)
+    GO_STATE_READY              = 1,                        // show in world as ready (closed door close)
+    GO_STATE_ACTIVE_ALTERNATIVE = 2                         // show in world as used in alt way and not reset (closed door open by cannon fire)
+};
+
+#define MAX_GO_STATE              3
 
 enum GameObjectDestructibleState
 {
@@ -3225,7 +3241,12 @@ enum EventId
     /// Special charge event which is used for charge spells that have explicit targets
     /// and had a path already generated - using it in PointMovementGenerator will not
     /// create a new spline and launch it
-    EVENT_CHARGE_PREPATH    = 1005
+    EVENT_CHARGE_PREPATH    = 1005,
+
+    EVENT_FACE              = 1006,
+    EVENT_VEHICLE_BOARD     = 1007,
+    EVENT_VEHICLE_EXIT      = 1008,
+    EVENT_ASSIST_MOVE       = 1009,
 };
 
 enum ResponseCodes
@@ -3358,7 +3379,8 @@ enum BanReturn
 {
     BAN_SUCCESS,
     BAN_SYNTAX_ERROR,
-    BAN_NOTFOUND
+    BAN_NOTFOUND,
+    BAN_EXISTS
 };
 
 enum BattlegroundTeamId
@@ -3371,7 +3393,7 @@ enum BattlegroundTeamId
 #define BG_TEAMS_COUNT  2
 
 // indexes of BattlemasterList.dbc
-enum BattlegroundTypeId
+enum BattlegroundTypeId : uint32
 {
     BATTLEGROUND_TYPE_NONE      = 0, // None
     BATTLEGROUND_AV             = 1, // Alterac Valley
@@ -3469,7 +3491,7 @@ enum TradeStatus
     TRADE_STATUS_NOT_ON_TAPLIST = 23                        // Related to trading soulbound loot items
 };
 
-enum XPColorChar
+enum XPColorChar : uint8
 {
     XP_RED,
     XP_ORANGE,
@@ -3478,7 +3500,7 @@ enum XPColorChar
     XP_GRAY
 };
 
-enum RemoveMethod
+enum RemoveMethod : uint8
 {
     GROUP_REMOVEMETHOD_DEFAULT  = 0,
     GROUP_REMOVEMETHOD_KICK     = 1,
@@ -3503,7 +3525,7 @@ enum ActivateTaxiReply
     ERR_TAXINOTSTANDING             = 12
 };
 
-enum DuelCompleteType
+enum DuelCompleteType : uint8
 {
     DUEL_INTERRUPTED = 0,
     DUEL_WON         = 1,
@@ -3622,14 +3644,6 @@ enum DiminishingLevels
     DIMINISHING_LEVEL_TAUNT_IMMUNE  = 4
 };
 
-/// Spell cooldown flags sent in SMSG_SPELL_COOLDOWN
-enum SpellCooldownFlags
-{
-    SPELL_COOLDOWN_FLAG_NONE                    = 0x0,
-    SPELL_COOLDOWN_FLAG_INCLUDE_GCD             = 0x1,  ///< Starts GCD in addition to normal cooldown specified in the packet
-    SPELL_COOLDOWN_FLAG_INCLUDE_EVENT_COOLDOWNS = 0x2   ///< Starts GCD for spells that should start their cooldown on events, requires SPELL_COOLDOWN_FLAG_INCLUDE_GCD set
-};
-
 enum WeaponAttackType : uint8
 {
     BASE_ATTACK   = 0,
@@ -3648,5 +3662,15 @@ enum CharterTypes
     ARENA_TEAM_CHARTER_3v3_TYPE = 3,
     ARENA_TEAM_CHARTER_5v5_TYPE = 5
 };
+
+enum LineOfSightChecks
+{
+    LINEOFSIGHT_CHECK_VMAP      = 0x1, // check static floor layout data
+    LINEOFSIGHT_CHECK_GOBJECT   = 0x2, // check dynamic game object data
+
+    LINEOFSIGHT_ALL_CHECKS      = (LINEOFSIGHT_CHECK_VMAP | LINEOFSIGHT_CHECK_GOBJECT)
+};
+
+#define MAX_CREATURE_SPELL_DATA_SLOT 4
 
 #endif

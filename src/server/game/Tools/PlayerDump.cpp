@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,14 +16,15 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "PlayerDump.h"
-#include "DatabaseEnv.h"
-#include "UpdateFields.h"
-#include "ObjectMgr.h"
-#include "Player.h"
 #include "AccountMgr.h"
 #include "CharacterCache.h"
+#include "Common.h"
+#include "DatabaseEnv.h"
+#include "Log.h"
+#include "ObjectMgr.h"
+#include "Player.h"
+#include "UpdateFields.h"
 #include "World.h"
 
 // static data
@@ -167,10 +168,12 @@ std::vector<TableStruct> CharacterTables;
 inline bool StringsEqualCaseInsensitive(std::string const& left, std::string const& right)
 {
     std::string upperLeftString = left;
-    ASSERT(Utf8ToUpperOnlyLatin(upperLeftString));
+    bool leftResult = Utf8ToUpperOnlyLatin(upperLeftString);
+    ASSERT(leftResult);
 
     std::string upperRightString = right;
-    ASSERT(Utf8ToUpperOnlyLatin(upperRightString));
+    bool rightResult = Utf8ToUpperOnlyLatin(upperRightString);
+    ASSERT(rightResult);
 
     return upperLeftString == upperRightString;
 }
@@ -269,7 +272,8 @@ void PlayerDump::InitializeTables()
             TableField f;
             f.FieldName = columnName;
 
-            ASSERT(Utf8ToUpperOnlyLatin(columnName));
+            bool toUpperResult = Utf8ToUpperOnlyLatin(columnName);
+            ASSERT(toUpperResult);
 
             t.TableFields.emplace_back(std::move(f));
         } while (result->NextRow());
@@ -414,7 +418,7 @@ inline std::string GetTableName(std::string const& str)
 {
     // length of "INSERT INTO `"
     static std::string::size_type const s = 13;
-    std::string::size_type e = str.find(_TABLE_SIM_, s);
+    std::string::size_type e = str.find('`', s);
     if (e == std::string::npos)
         return "";
 
@@ -437,7 +441,7 @@ inline bool ValidateFields(TableStruct const& ts, std::string const& str, size_t
     s += 4;
 
     std::string::size_type valPos = str.find("VALUES ('");
-    std::string::size_type e = str.find(_TABLE_SIM_, s);
+    std::string::size_type e = str.find('`', s);
     if (e == std::string::npos || valPos == std::string::npos)
     {
         TC_LOG_ERROR("misc", "LoadPlayerDump: (line " UI64FMTD ") unexpected end of line", lineNumber);
@@ -456,7 +460,7 @@ inline bool ValidateFields(TableStruct const& ts, std::string const& str, size_t
 
         // length of "`, `"
         s = e + 4;
-        e = str.find(_TABLE_SIM_, s);
+        e = str.find('`', s);
     } while (e < valPos);
 
     return true;
@@ -518,10 +522,10 @@ inline void AppendTableDump(StringTransaction& trans, TableStruct const& tableSt
     do
     {
         std::ostringstream ss;
-        ss << "INSERT INTO " << _TABLE_SIM_ << tableStruct.TableName << _TABLE_SIM_ << " (";
+        ss << "INSERT INTO `" << tableStruct.TableName << "` (";
         for (auto itr = tableStruct.TableFields.begin(); itr != tableStruct.TableFields.end();)
         {
-            ss << _TABLE_SIM_ << itr->FieldName << _TABLE_SIM_;
+            ss << '`' << itr->FieldName << '`';
             ++itr;
 
             if (itr != tableStruct.TableFields.end())
@@ -609,16 +613,16 @@ void PlayerDumpWriter::PopulateGuids(ObjectGuid::LowType guid)
             switch (baseTable.StoredType)
             {
                 case GUID_TYPE_ITEM:
-                    if (ObjectGuid::LowType guid = (*result)[0].GetUInt32())
-                        _items.insert(guid);
+                    if (ObjectGuid::LowType itemLowGuid = (*result)[0].GetUInt32())
+                        _items.insert(itemLowGuid);
                     break;
                 case GUID_TYPE_MAIL:
-                    if (ObjectGuid::LowType guid = (*result)[0].GetUInt32())
-                        _mails.insert(guid);
+                    if (ObjectGuid::LowType mailLowGuid = (*result)[0].GetUInt32())
+                        _mails.insert(mailLowGuid);
                     break;
                 case GUID_TYPE_PET:
-                    if (ObjectGuid::LowType guid = (*result)[0].GetUInt32())
-                        _pets.insert(guid);
+                    if (ObjectGuid::LowType petLowGuid = (*result)[0].GetUInt32())
+                        _pets.insert(petLowGuid);
                     break;
                 case GUID_TYPE_EQUIPMENT_SET:
                     if (uint64 eqSetId = (*result)[0].GetUInt64())
@@ -935,7 +939,7 @@ DumpReturn PlayerDumpReader::LoadDump(std::string const& file, uint32 account, s
                         if (!ChangeColumn(ts, line, "at_login", "1"))
                             return DUMP_FILE_BROKEN;
                 }
-                else if (!ChangeColumn(ts, line, "name", name.c_str())) // characters.name
+                else if (!ChangeColumn(ts, line, "name", name)) // characters.name
                     return DUMP_FILE_BROKEN;
                 break;
             }

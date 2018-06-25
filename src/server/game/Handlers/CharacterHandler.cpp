@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,41 +16,40 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AccountMgr.h"
-#include "ArenaTeam.h"
+#include "WorldSession.h"
 #include "ArenaTeamMgr.h"
-#include "Battleground.h"
 #include "CalendarMgr.h"
 #include "CharacterCache.h"
 #include "Chat.h"
-#include "Common.h"
 #include "DatabaseEnv.h"
+#include "DBCStores.h"
+#include "GameObject.h"
 #include "GameTime.h"
+#include "GitRevision.h"
 #include "Group.h"
 #include "Guild.h"
 #include "GuildMgr.h"
+#include "InstanceSaveMgr.h"
+#include "Item.h"
 #include "Language.h"
 #include "Log.h"
+#include "Map.h"
+#include "Metric.h"
+#include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Opcodes.h"
 #include "Pet.h"
-#include "PlayerDump.h"
 #include "Player.h"
-#include "QueryCallback.h"
+#include "PlayerDump.h"
+#include "RBAC.h"
+#include "Realm.h"
 #include "ReputationMgr.h"
-#include "GitRevision.h"
 #include "ScriptMgr.h"
 #include "ServerMotd.h"
-#include "SharedDefines.h"
 #include "SocialMgr.h"
-#include "UpdateMask.h"
-#include "Util.h"
+#include "QueryHolder.h"
 #include "World.h"
-#include "WorldPacket.h"
-#include "WorldSession.h"
-#include "Metric.h"
-
 
 class LoginQueryHolder : public SQLQueryHolder
 {
@@ -126,7 +125,7 @@ bool LoginQueryHolder::Initialize()
 
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_MAILCOUNT);
     stmt->setUInt32(0, lowGuid);
-    stmt->setUInt64(1, uint64(time(NULL)));
+    stmt->setUInt64(1, uint64(GameTime::GetGameTime()));
     res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_MAIL_COUNT, stmt);
 
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_MAILDATE);
@@ -549,6 +548,13 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recvData)
                 return;
             }
 
+            // Check name uniqueness in the same step as saving to database
+            if (sCharacterCache->GetCharacterCacheByName(createInfo->Name))
+            {
+                SendCharCreate(CHAR_CREATE_NAME_IN_USE);
+                return;
+            }
+
             Player newChar(this);
             newChar.GetMotionMaster()->Initialize();
             if (!newChar.Create(sObjectMgr->GetGenerator<HighGuid::Player>().Generate(), createInfo.get()))
@@ -680,7 +686,7 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recvData)
 
 void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recvData)
 {
-    if (PlayerLoading() || GetPlayer() != NULL)
+    if (PlayerLoading() || GetPlayer() != nullptr)
     {
         TC_LOG_ERROR("network", "Player tries to login again, AccountId = %d", GetAccountId());
         KickPlayer();
@@ -721,7 +727,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     // "GetAccountId() == db stored account id" checked in LoadFromDB (prevent login not own character using cheating tools)
     if (!pCurrChar->LoadFromDB(playerGuid, holder))
     {
-        SetPlayer(NULL);
+        SetPlayer(nullptr);
         KickPlayer();                                       // disconnect client, player no set to session and it will not deleted or saved at kick
         delete pCurrChar;                                   // delete it manually
         delete holder;                                      // delete all unprocessed queries
@@ -855,8 +861,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     {
         // not blizz like, we must correctly save and load player instead...
         if (pCurrChar->getRace() == RACE_NIGHTELF)
-            pCurrChar->CastSpell(pCurrChar, 20584, true, nullptr);// auras SPELL_AURA_INCREASE_SPEED(+speed in wisp form), SPELL_AURA_INCREASE_SWIM_SPEED(+swim speed in wisp form), SPELL_AURA_TRANSFORM (to wisp form)
-        pCurrChar->CastSpell(pCurrChar, 8326, true, nullptr);     // auras SPELL_AURA_GHOST, SPELL_AURA_INCREASE_SPEED(why?), SPELL_AURA_INCREASE_SWIM_SPEED(why?)
+            pCurrChar->CastSpell(pCurrChar, 20584, true);// auras SPELL_AURA_INCREASE_SPEED(+speed in wisp form), SPELL_AURA_INCREASE_SWIM_SPEED(+swim speed in wisp form), SPELL_AURA_TRANSFORM (to wisp form)
+        pCurrChar->CastSpell(pCurrChar, 8326, true);     // auras SPELL_AURA_GHOST, SPELL_AURA_INCREASE_SPEED(why?), SPELL_AURA_INCREASE_SWIM_SPEED(why?)
 
         pCurrChar->SetMovement(MOVE_WATER_WALK);
     }
@@ -1481,12 +1487,11 @@ void WorldSession::HandleEquipmentSetSave(WorldPacket& recvData)
     std::string iconName;
     recvData >> iconName;
 
-    EquipmentSet eqSet;
-
-    eqSet.Guid      = setGuid;
-    eqSet.Name      = name;
-    eqSet.IconName  = iconName;
-    eqSet.state     = EQUIPMENT_SET_NEW;
+    EquipmentSetInfo::EquipmentSetData eqData;
+    eqData.Guid    = setGuid;
+    eqData.SetID   = index;
+    eqData.SetName = name;
+    eqData.SetIcon = iconName;
 
     for (uint32 i = 0; i < EQUIPMENT_SLOT_END; ++i)
     {
@@ -1495,31 +1500,25 @@ void WorldSession::HandleEquipmentSetSave(WorldPacket& recvData)
 
         // if client sends 0, it means empty slot
         if (itemGuid.IsEmpty())
-        {
-            eqSet.Items[i] = 0;
             continue;
-        }
 
         // equipment manager sends "1" (as raw GUID) for slots set to "ignore" (don't touch slot at equip set)
         if (itemGuid.GetRawValue() == 1)
         {
             // ignored slots saved as bit mask because we have no free special values for Items[i]
-            eqSet.IgnoreMask |= 1 << i;
+            eqData.IgnoreMask |= 1 << i;
             continue;
         }
 
         // some cheating checks
         Item* item = _player->GetItemByPos(INVENTORY_SLOT_BAG_0, i);
         if (!item || item->GetGUID() != itemGuid)
-        {
-            eqSet.Items[i] = 0;
             continue;
-        }
 
-        eqSet.Items[i] = itemGuid.GetCounter();
+        eqData.Pieces[i] = itemGuid;
     }
 
-    _player->SetEquipmentSet(index, eqSet);
+    _player->SetEquipmentSet(eqData);
 }
 
 void WorldSession::HandleEquipmentSetDelete(WorldPacket& recvData)
@@ -1568,16 +1567,22 @@ void WorldSession::HandleEquipmentSetUse(WorldPacket& recvData)
             InventoryResult msg = _player->CanStoreItem(NULL_BAG, NULL_SLOT, sDest, uItem, false);
             if (msg == EQUIP_ERR_OK)
             {
+                if (_player->CanUnequipItem(dstpos, true) != EQUIP_ERR_OK)
+                    continue;
+
                 _player->RemoveItem(INVENTORY_SLOT_BAG_0, i, true);
                 _player->StoreItem(sDest, uItem, true);
             }
             else
-                _player->SendEquipError(msg, uItem, NULL);
+                _player->SendEquipError(msg, uItem, nullptr);
 
             continue;
         }
 
         if (item->GetPos() == dstpos)
+            continue;
+
+        if (_player->CanEquipItem(i, dstpos, item, true) != EQUIP_ERR_OK)
             continue;
 
         _player->SwapItem(item->GetPos(), dstpos);
@@ -1960,16 +1965,15 @@ void WorldSession::HandleCharFactionOrRaceChangeCallback(std::shared_ptr<Charact
 
             // Disable all old-faction specific quests
             {
-                ObjectMgr::QuestMap const& questTemplates = sObjectMgr->GetQuestTemplates();
-                for (ObjectMgr::QuestMap::const_iterator iter = questTemplates.begin(); iter != questTemplates.end(); ++iter)
+                ObjectMgr::QuestContainer const& questTemplates = sObjectMgr->GetQuestTemplates();
+                for (auto const& questTemplatePair : questTemplates)
                 {
-                    Quest const* quest = iter->second;
                     uint32 newRaceMask = (newTeam == ALLIANCE) ? RACEMASK_ALLIANCE : RACEMASK_HORDE;
-                    if (!(quest->GetAllowableRaces() & newRaceMask))
+                    if (!(questTemplatePair.second.GetAllowableRaces() & newRaceMask))
                     {
                         stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHAR_QUESTSTATUS_REWARDED_ACTIVE_BY_QUEST);
                         stmt->setUInt32(0, lowGuid);
-                        stmt->setUInt32(1, quest->GetQuestId());
+                        stmt->setUInt32(1, questTemplatePair.first);
                         trans->Append(stmt);
                     }
                 }
@@ -2092,7 +2096,7 @@ void WorldSession::HandleCharFactionOrRaceChangeCallback(std::shared_ptr<Charact
                         ss << knownTitles[index] << ' ';
 
                     stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHAR_TITLES_FACTION_CHANGE);
-                    stmt->setString(0, ss.str().c_str());
+                    stmt->setString(0, ss.str());
                     stmt->setUInt32(1, lowGuid);
                     trans->Append(stmt);
 

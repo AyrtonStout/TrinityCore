@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,11 +16,15 @@
  */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
+#include "GameObject.h"
 #include "GameObjectAI.h"
-#include "SpellScript.h"
-#include "SpellAuraEffects.h"
+#include "InstanceScript.h"
 #include "karazhan.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "ScriptedCreature.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
 
 enum NightbaneSpells
 {
@@ -153,6 +157,7 @@ public:
                 Talk(EMOTE_SUMMON);
                 events.SetPhase(PHASE_INTRO);
                 me->setActive(true);
+                me->SetFarVisible(true);
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 me->GetMotionMaster()->MoveAlongSplineChain(POINT_INTRO_START, SPLINE_CHAIN_INTRO_START, false);
                 HandleTerraceDoors(false);
@@ -176,9 +181,9 @@ public:
             instance->HandleGameObject(instance->GetGuidData(DATA_MASTERS_TERRACE_DOOR_2), open);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
-            _EnterCombat();
+            _JustEngagedWith();
             Talk(YELL_AGGRO);
             SetupGroundPhase();
         }
@@ -294,8 +299,8 @@ public:
                     me->GetMotionMaster()->MoveAlongSplineChain(POINT_PHASE_TWO_LANDING, SPLINE_CHAIN_SECOND_LANDING, false);
                     break;
                 case EVENT_INTRO_LANDING:
-                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
-                    me->SetInCombatWithZone();
+                    me->SetImmuneToPC(false);
+                    DoZoneInCombat();
                     break;
                 case EVENT_LAND:
                     Talk(YELL_LAND_PHASE);
@@ -317,7 +322,7 @@ public:
                     me->GetMotionMaster()->MoveAlongSplineChain(POINT_INTRO_END, SPLINE_CHAIN_INTRO_END, false);
                     break;
                 case EVENT_RAIN_OF_BONES:
-                    DoResetThreat();
+                    ResetThreatList();
                     if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0.0f, true))
                     {
                         me->SetFacingToObject(target);
@@ -375,7 +380,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<boss_nightbaneAI>(creature);
+        return GetKarazhanAI<boss_nightbaneAI>(creature);
     }
 };
 
@@ -391,9 +396,7 @@ class spell_rain_of_bones : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_SUMMON_SKELETON))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_SUMMON_SKELETON });
             }
 
             void OnTrigger(AuraEffect const* aurEff)

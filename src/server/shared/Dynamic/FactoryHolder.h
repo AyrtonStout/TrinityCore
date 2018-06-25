@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,8 +20,8 @@
 #define TRINITY_FACTORY_HOLDER
 
 #include "Define.h"
-#include "Dynamic/TypeList.h"
 #include "ObjectRegistry.h"
+#include "TypeList.h"
 
 /** FactoryHolder holds a factory object of a specific type
  */
@@ -54,4 +54,3 @@ class Permissible
         virtual int32 Permit(T const*) const = 0;
 };
 #endif
-
