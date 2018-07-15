@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -28,14 +28,16 @@ npc_alexstrasza_wr_gate
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
-#include "SpellScript.h"
-#include "SpellAuraEffects.h"
-#include "ScriptedEscortAI.h"
-#include "Vehicle.h"
 #include "CombatAI.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
+#include "ObjectMgr.h"
 #include "Player.h"
+#include "ScriptedEscortAI.h"
+#include "ScriptedGossip.h"
+#include "SpellInfo.h"
+#include "SpellScript.h"
+#include "Vehicle.h"
 
 /*#####
 # npc_commander_eligor_dawnbringer
@@ -409,7 +411,7 @@ public:
                 tree->AI()->Talk(SAY_WALKER_FRIENDLY, player);
                 tree->DespawnOrUnsummon(1000);
             }
-            else if (roll == 0) // enemy version
+            else // enemy version
             {
                 tree->AI()->Talk(SAY_WALKER_ENEMY, player);
                 tree->SetFaction(FACTION_MONSTER);
@@ -548,8 +550,8 @@ class npc_wyrmrest_defender : public CreatureScript
                 {
                     case SPELL_WYRMREST_DEFENDER_MOUNT:
                         Talk(WHISPER_MOUNTED, me->GetCharmerOrOwner());
-                        me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
-                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
+                        me->SetImmuneToAll(false);
+                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
                         break;
                     // Both below are for checking low hp warning
                     case SPELL_DEFENDER_ON_LOW_HEALTH_EMOTE:
@@ -631,7 +633,7 @@ class npc_torturer_lecraft : public CreatureScript
                 _playerGUID.Clear();
             }
 
-            void EnterCombat(Unit* who) override
+            void JustEngagedWith(Unit* who) override
             {
                 _events.ScheduleEvent(EVENT_HEMORRHAGE, urand(5000, 8000));
                 _events.ScheduleEvent(EVENT_KIDNEY_SHOT, urand(12000, 15000));
@@ -640,7 +642,7 @@ class npc_torturer_lecraft : public CreatureScript
                     Talk (SAY_AGGRO, player);
             }
 
-            void SpellHit(Unit* caster, const SpellInfo* spell) override
+            void SpellHit(Unit* caster, SpellInfo const* spell) override
             {
                 if (spell->Id != SPELL_HIGH_EXECUTORS_BRANDING_IRON)
                     return;
@@ -715,7 +717,7 @@ class at_nearby_messenger_torvus : public AreaTriggerScript
 public:
     at_nearby_messenger_torvus() : AreaTriggerScript("at_nearby_messenger_torvus") { }
 
-    bool OnTrigger(Player* player, const AreaTriggerEntry* /*at*/) override
+    bool OnTrigger(Player* player, AreaTriggerEntry const* /*at*/) override
     {
         if (player->IsAlive())
             if (Quest const* quest = sObjectMgr->GetQuestTemplate(QUEST_MESSAGE_FROM_THE_WEST))

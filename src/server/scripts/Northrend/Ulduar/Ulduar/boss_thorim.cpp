@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,16 +15,22 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "MoveSplineInit.h"
-#include "Player.h"
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "SpellScript.h"
-#include "SpellAuraEffects.h"
-#include "TypeContainerVisitor.h"
+#include "AreaBoundary.h"
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
+#include "InstanceScript.h"
+#include "MotionMaster.h"
+#include "MoveSplineInit.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
+#include "ScriptedCreature.h"
+#include "SpellAuraEffects.h"
+#include "SpellMgr.h"
+#include "SpellScript.h"
+#include "TypeContainerVisitor.h"
 #include "ulduar.h"
+#include <G3D/Vector3.h>
 
 enum Spells
 {
@@ -317,8 +323,7 @@ enum DisplayIds
     THORIM_WEAPON_DISPLAY_ID                = 45900
 };
 
-uint32 const LightningOrbPathSize = 8;
-G3D::Vector3 const LightningOrbPath[LightningOrbPathSize] =
+Position const LightningOrbPath[] =
 {
     { 2134.889893f, -298.632996f, 438.247467f },
     { 2134.570068f, -440.317993f, 438.247467f },
@@ -329,6 +334,7 @@ G3D::Vector3 const LightningOrbPath[LightningOrbPathSize] =
     { 2202.208008f, -262.939270f, 412.168976f },
     { 2182.310059f, -263.233093f, 414.739410f }
 };
+std::size_t const LightningOrbPathSize = std::extent<decltype(LightningOrbPath)>::value;
 
 // used for trash jump calculation
 Position const ArenaCenter = { 2134.77f, -262.307f };
@@ -352,7 +358,7 @@ class HeightPositionCheck
 
         bool operator()(Position const* pos) const
         {
-            return pos->GetPositionZ() > THORIM_BALCONY_Z_CHECK == _ret;
+            return (pos->GetPositionZ() > THORIM_BALCONY_Z_CHECK) == _ret;
         }
 
     private:
@@ -369,7 +375,7 @@ class RunicSmashExplosionEvent : public BasicEvent
 
         bool Execute(uint64 /*eventTime*/, uint32 /*updateTime*/) override
         {
-            _owner->CastSpell((Unit*)nullptr, SPELL_RUNIC_SMASH);
+            _owner->CastSpell(nullptr, SPELL_RUNIC_SMASH);
             return true;
         }
 
@@ -387,7 +393,7 @@ class TrashJumpEvent : public BasicEvent
             switch (_stage)
             {
                 case 0:
-                    _owner->CastSpell((Unit*)nullptr, SPELL_LEAP);
+                    _owner->CastSpell(nullptr, SPELL_LEAP);
                     ++_stage;
                     _owner->m_Events.AddEvent(this, eventTime + 2000);
                     return false;
@@ -419,7 +425,7 @@ class LightningFieldEvent : public BasicEvent
             {
                 if (instance->GetBossState(BOSS_THORIM) == IN_PROGRESS)
                 {
-                    _owner->CastSpell((Unit*)nullptr, SPELL_LIGHTNING_FIELD);
+                    _owner->CastSpell(nullptr, SPELL_LIGHTNING_FIELD);
                     _owner->m_Events.AddEvent(this, eventTime + 1000);
                     return false;
                 }
@@ -468,7 +474,7 @@ class boss_thorim : public CreatureScript
                 me->SetReactState(REACT_PASSIVE);
                 me->SetDisableGravity(true);
                 me->SetControlled(true, UNIT_STATE_ROOT);
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                me->SetImmuneToPC(true);
 
                 events.SetPhase(PHASE_NULL);
 
@@ -500,16 +506,16 @@ class boss_thorim : public CreatureScript
                 _DespawnAtEvade();
             }
 
-            void SetGUID(ObjectGuid guid, int32 type) override
+            void SetGUID(ObjectGuid const& guid, int32 id) override
             {
-                if (type == DATA_CHARGED_PILLAR)
+                if (id == DATA_CHARGED_PILLAR)
                 {
                     _activePillarGUID = guid;
 
                     if (Creature* pillar = ObjectAccessor::GetCreature(*me, _activePillarGUID))
                     {
                         pillar->CastSpell(pillar, SPELL_LIGHTNING_ORB_CHARGED, true);
-                        pillar->CastSpell((Unit*)nullptr, SPELL_LIGHTNING_PILLAR_2);
+                        pillar->CastSpell(nullptr, SPELL_LIGHTNING_PILLAR_2);
                         events.ScheduleEvent(EVENT_LIGHTNING_CHARGE, 8000, 0, PHASE_2);
                     }
                 }
@@ -601,13 +607,13 @@ class boss_thorim : public CreatureScript
                 if (type != EFFECT_MOTION_TYPE || id != EVENT_JUMP)
                     return;
 
-                me->getThreatManager().resetAllAggro();
+                ResetThreatList();
                 SetBoundary(&ArenaBoundaries);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
-                _EnterCombat();
+                _JustEngagedWith();
                 Talk(SAY_AGGRO_1);
 
                 events.SetPhase(PHASE_1);
@@ -625,7 +631,7 @@ class boss_thorim : public CreatureScript
 
                 if (Creature* runicColossus = instance->GetCreature(DATA_RUNIC_COLOSSUS))
                 {
-                    runicColossus->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                    runicColossus->SetImmuneToPC(false);
                     runicColossus->AI()->DoAction(ACTION_ACTIVATE_ADDS);
                 }
 
@@ -645,13 +651,16 @@ class boss_thorim : public CreatureScript
                         summon->SetReactState(REACT_PASSIVE);
                         summon->CastSpell(summon, SPELL_LIGHTNING_DESTRUCTION, true);
 
-                        summon->GetMotionMaster()->MovePoint(EVENT_CHARGE_PREPATH, LightningOrbPath[LightningOrbPathSize - 1], false);
-
-                        Movement::PointsArray path(LightningOrbPath, LightningOrbPath + LightningOrbPathSize);
+                        Movement::PointsArray path;
+                        path.reserve(LightningOrbPathSize);
+                        std::transform(std::begin(LightningOrbPath), std::end(LightningOrbPath), std::back_inserter(path), [](Position const& pos)
+                        {
+                            return G3D::Vector3(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ());
+                        });
 
                         Movement::MoveSplineInit init(summon);
                         init.MovebyPath(path);
-                        init.Launch();
+                        summon->GetMotionMaster()->LaunchMoveSpline(std::move(init), 0, MOTION_PRIORITY_NORMAL, POINT_MOTION_TYPE);
                         break;
                     }
                     case NPC_DARK_RUNE_CHAMPION:
@@ -827,7 +836,7 @@ class boss_thorim : public CreatureScript
                         if (++_killedCount >= 6)
                         {
                             // Event starts
-                            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                            me->SetImmuneToPC(false);
                             DoZoneInCombat(me);
                         }
                         break;
@@ -901,7 +910,7 @@ class boss_thorim : public CreatureScript
 
             bool CanStartPhase2(Unit* actor) const
             {
-                if (actor->GetTypeId() != TYPEID_PLAYER || !me->IsWithinDistInMap(actor, 10.0f))
+                if (!actor || actor->GetTypeId() != TYPEID_PLAYER || !me->IsWithinDistInMap(actor, 10.0f))
                     return false;
 
                 Creature* runicColossus = instance->GetCreature(DATA_RUNIC_COLOSSUS);
@@ -984,7 +993,7 @@ struct npc_thorim_trashAI : public ScriptedAI
             uint32 heal = 0;
             Unit::AuraEffectList const& auras = target->GetAuraEffectsByType(SPELL_AURA_PERIODIC_HEAL);
             for (AuraEffect const* aurEff : auras)
-                heal += aurEff->GetAmount() * (aurEff->GetTotalTicks() - aurEff->GetTickNumber());
+                heal += aurEff->GetAmount() * aurEff->GetRemainingTicks();
 
             return heal;
         }
@@ -1131,6 +1140,7 @@ class npc_thorim_pre_phase : public CreatureScript
             npc_thorim_pre_phaseAI(Creature* creature) : npc_thorim_trashAI(creature)
             {
                 me->setActive(true); // prevent grid unload
+                me->SetFarVisible(true);
             }
 
             void Reset() override
@@ -1146,7 +1156,7 @@ class npc_thorim_pre_phase : public CreatureScript
                     SetCombatMovement(false);
             }
 
-            void JustDied(Unit* /*victim*/) override
+            void JustDied(Unit* /*killer*/) override
             {
                 if (Creature* thorim = _instance->GetCreature(BOSS_THORIM))
                     thorim->AI()->DoAction(ACTION_INCREASE_PREADDS_COUNT);
@@ -1160,7 +1170,7 @@ class npc_thorim_pre_phase : public CreatureScript
             void DamageTaken(Unit* attacker, uint32& damage) override
             {
                 // nullify spell damage
-                if (!attacker->GetAffectingPlayer())
+                if (!attacker || !attacker->GetAffectingPlayer())
                     damage = 0;
             }
 
@@ -1233,7 +1243,7 @@ class npc_thorim_arena_phase : public CreatureScript
                 if (_isInArena && HeightPositionCheck(true)(who))
                     return false;
 
-                return CheckBoundary(who);
+                return IsInBoundary(who);
             }
 
             void Reset() override
@@ -1249,7 +1259,7 @@ class npc_thorim_arena_phase : public CreatureScript
                     _events.ScheduleEvent(EVENT_ABILITY_CHARGE, 8000);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 if (_info->Type == DARK_RUNE_WARBRINGER)
                     DoCast(me, SPELL_AURA_OF_CELERITY);
@@ -1326,7 +1336,7 @@ struct npc_thorim_minibossAI : public ScriptedAI
 
     bool CanAIAttack(Unit const* who) const final override
     {
-        return CheckBoundary(who);
+        return IsInBoundary(who);
     }
 
     void JustSummoned(Creature* summon) final override
@@ -1345,7 +1355,7 @@ struct npc_thorim_minibossAI : public ScriptedAI
         {
             for (ObjectGuid const& guid : _summons)
                 if (Creature* summon = ObjectAccessor::GetCreature(*me, guid))
-                    summon->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                    summon->SetImmuneToPC(false);
         }
     }
 
@@ -1405,7 +1415,7 @@ class npc_runic_colossus : public CreatureScript
                 }
             }
 
-            void JustDied(Unit* /*victim*/) override
+            void JustDied(Unit* /*killer*/) override
             {
                 // open the Runic Door
                 _instance->HandleGameObject(_instance->GetGuidData(DATA_RUNIC_DOOR), true);
@@ -1415,12 +1425,12 @@ class npc_runic_colossus : public CreatureScript
 
                 if (Creature* giant = _instance->GetCreature(DATA_RUNE_GIANT))
                 {
-                    giant->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                    giant->SetImmuneToPC(false);
                     giant->AI()->DoAction(ACTION_ACTIVATE_ADDS);
                 }
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 DoZoneInCombat();
                 _events.Reset();
@@ -1507,7 +1517,7 @@ class npc_ancient_rune_giant : public CreatureScript
                     me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 DoZoneInCombat();
                 _events.Reset();
@@ -1516,7 +1526,7 @@ class npc_ancient_rune_giant : public CreatureScript
                 _events.ScheduleEvent(EVENT_RUNE_DETONATION, 25000);
             }
 
-            void JustDied(Unit* /*victim*/) override
+            void JustDied(Unit* /*killer*/) override
             {
                 // opem the Stone Door
                 _instance->HandleGameObject(_instance->GetGuidData(DATA_STONE_DOOR), true);
@@ -1749,9 +1759,7 @@ class spell_thorim_charge_orb : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_LIGHTNING_PILLAR_1))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_LIGHTNING_PILLAR_1 });
             }
 
             void FilterTargets(std::list<WorldObject*>& targets)
@@ -1769,7 +1777,7 @@ class spell_thorim_charge_orb : public SpellScriptLoader
             void HandleScript()
             {
                 if (Unit* target = GetHitUnit())
-                    target->CastSpell((Unit*)nullptr, SPELL_LIGHTNING_PILLAR_1, true);
+                    target->CastSpell(nullptr, SPELL_LIGHTNING_PILLAR_1, true);
             }
 
             void Register() override
@@ -1797,9 +1805,7 @@ class spell_thorim_lightning_charge : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_LIGHTNING_CHARGE))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_LIGHTNING_CHARGE });
             }
 
             void HandleFocus()
@@ -1880,10 +1886,7 @@ class spell_thorim_stormhammer : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_STORMHAMMER_BOOMERANG)
-                    || !sSpellMgr->GetSpellInfo(SPELL_DEAFENING_THUNDER))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_STORMHAMMER_BOOMERANG, SPELL_DEAFENING_THUNDER });
             }
 
             void FilterTargets(std::list<WorldObject*>& targets)
@@ -1941,10 +1944,7 @@ class spell_thorim_stormhammer_sif : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_STORMHAMMER_BOOMERANG)
-                    || !sSpellMgr->GetSpellInfo(SPELL_SIF_TRANSFORM))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_STORMHAMMER_BOOMERANG, SPELL_SIF_TRANSFORM });
             }
 
             void HandleScript(SpellEffIndex /*effIndex*/)
@@ -2014,9 +2014,7 @@ class spell_thorim_runic_smash : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_RUNIC_SMASH))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_RUNIC_SMASH });
             }
 
             void HandleScript(SpellEffIndex effIndex)
@@ -2109,37 +2107,6 @@ class spell_thorim_activate_lightning_orb_periodic : public SpellScriptLoader
         }
 };
 
-// 62331, 62418 - Impale
-class spell_iron_ring_guard_impale : public SpellScriptLoader
-{
-    public:
-        spell_iron_ring_guard_impale() : SpellScriptLoader("spell_iron_ring_guard_impale") { }
-
-        class spell_iron_ring_guard_impale_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_iron_ring_guard_impale_AuraScript);
-
-            void PeriodicTick(AuraEffect const* /*aurEff*/)
-            {
-                if (GetTarget()->HealthAbovePct(GetSpellInfo()->Effects[EFFECT_1].CalcValue()))
-                {
-                    Remove(AURA_REMOVE_BY_ENEMY_SPELL);
-                    PreventDefaultAction();
-                }
-            }
-
-            void Register() override
-            {
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_iron_ring_guard_impale_AuraScript::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_iron_ring_guard_impale_AuraScript();
-        }
-};
-
 class achievement_dont_stand_in_the_lightning : public AchievementCriteriaScript
 {
     public:
@@ -2214,7 +2181,6 @@ void AddSC_boss_thorim()
     new spell_thorim_arena_leap();
     new spell_thorim_runic_smash();
     new spell_thorim_activate_lightning_orb_periodic();
-    new spell_iron_ring_guard_impale();
     new achievement_dont_stand_in_the_lightning();
     new achievement_lose_your_illusion();
     new achievement_i_ll_take_you_all_on();

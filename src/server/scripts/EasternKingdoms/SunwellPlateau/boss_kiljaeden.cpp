@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,11 +25,16 @@ EndScriptData */
 /// @todo rewrite Armageddon
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
+#include "GameObject.h"
 #include "GameObjectAI.h"
-#include "sunwell_plateau.h"
-#include <math.h>
+#include "InstanceScript.h"
+#include "Log.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
+#include "sunwell_plateau.h"
+#include "TemporarySummon.h"
 
 /*** Speech and sounds***/
 enum Yells
@@ -260,6 +265,7 @@ public:
             me->SetDisableGravity(true);
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             me->setActive(true);
+            me->SetFarVisible(true);
 
             for (uint8 i = 0; i < 4; ++i)
                 if (GameObject* pOrb = GetOrb(i))
@@ -280,7 +286,7 @@ public:
                     return ObjectAccessor::GetGameObject(*me, instance->GetGuidData(DATA_ORB_OF_THE_BLUE_DRAGONFLIGHT_4));
             }
 
-            return NULL;
+            return nullptr;
         }
 
         void ResetOrbs()
@@ -307,6 +313,7 @@ public:
                         pOrb->CastSpell(me, SPELL_RING_OF_BLUE_FLAMES);
                         pOrb->SetFaction(FACTION_FRIENDLY);
                         pOrb->setActive(true);
+                        pOrb->SetFarVisible(true);
                         pOrb->Refresh();
                     }
                 }
@@ -319,6 +326,7 @@ public:
                     pOrb->CastSpell(me, SPELL_RING_OF_BLUE_FLAMES);
                     pOrb->SetFaction(FACTION_FRIENDLY);
                     pOrb->setActive(true);
+                    pOrb->SetFarVisible(true);
                     pOrb->Refresh();
 
                     OrbsEmpowered = (OrbsEmpowered+1)%4;
@@ -350,6 +358,7 @@ public:
                     {
                         pOrb->CastSpell(me, SPELL_RING_OF_BLUE_FLAMES);
                         pOrb->setActive(true);
+                        pOrb->SetFarVisible(true);
                         pOrb->Refresh();
                     }
                 }
@@ -464,7 +473,7 @@ public:
                     break;
                 case NPC_KILJAEDEN:
                     summoned->CastSpell(summoned, SPELL_REBIRTH, false);
-                    summoned->AddThreat(me->GetVictim(), 1.0f);
+                    AddThreat(me->GetVictim(), 1.0f, summoned);
                     break;
             }
             summons.Summon(summoned);
@@ -643,7 +652,7 @@ public:
                 ENSURE_AI(npc_kiljaeden_controller::npc_kiljaeden_controllerAI, pControl->AI())->Reset();
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             DoZoneInCombat();
         }
@@ -665,7 +674,7 @@ public:
             Talk(SAY_KJ_REFLECTION);
             for (uint8 i = 0; i < 4; ++i)
             {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true, -SPELL_VENGEANCE_OF_THE_BLUE_FLIGHT))
+                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true, true, -SPELL_VENGEANCE_OF_THE_BLUE_FLIGHT))
                 {
                     float x, y, z;
                     target->GetPosition(x, y, z);
@@ -701,7 +710,7 @@ public:
                         case TIMER_SPEECH:
                             if (SpeechBegins)
                             {
-                                SpeechBegins=false;
+                                SpeechBegins = false;
                                 switch (Phase)
                                 {
                                     case PHASE_NORMAL:
@@ -744,7 +753,7 @@ public:
                         case TIMER_LEGION_LIGHTNING:
                             if (!me->IsNonMeleeSpellCast(false))
                             {
-                                Unit* pRandomPlayer = NULL;
+                                Unit* pRandomPlayer = nullptr;
 
                                 me->RemoveAurasDueToSpell(SPELL_SOUL_FLAY);
                                 for (uint8 z = 0; z < 6; ++z)
@@ -839,7 +848,7 @@ public:
                             TimerIsDeactivated[TIMER_ORBS_EMPOWER] = true;
                             break;
                         case TIMER_ARMAGEDDON: //Phase 4
-                            Unit* target = NULL;
+                            Unit* target = nullptr;
                             for (uint8 z = 0; z < 6; ++z)
                             {
                                 target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true);
@@ -946,11 +955,11 @@ public:
             summoned->SetLevel(me->getLevel());
         }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             instance->SetBossState(DATA_KILJAEDEN, IN_PROGRESS);
             if (Creature* pControl = instance->GetCreature(DATA_KILJAEDEN_CONTROLLER))
-                pControl->AddThreat(who, 1.0f);
+                AddThreat(who, 1.0f, pControl);
 
             me->InterruptNonMeleeSpells(true);
         }
@@ -986,15 +995,8 @@ public:
             if (FelfirePortalTimer <= diff)
             {
                 if (Creature* pPortal = DoSpawnCreature(NPC_FELFIRE_PORTAL, 0, 0, 0, 0, TEMPSUMMON_TIMED_DESPAWN, 20000))
-                {
-                    ThreatContainer::StorageType const &threatlist = me->getThreatManager().getThreatList();
-                    for (ThreatContainer::StorageType::const_iterator itr = threatlist.begin(); itr != threatlist.end(); ++itr)
-                    {
-                        Unit* unit = ObjectAccessor::GetUnit(*me, (*itr)->getUnitGuid());
-                        if (unit)
-                            pPortal->AddThreat(unit, 1.0f);
-                    }
-                }
+                    for (ThreatReference const* ref : me->GetThreatManager().GetUnsortedThreatList())
+                        AddThreat(ref->GetVictim(), 1.0f, pPortal);
                 FelfirePortalTimer = 20000;
             } else FelfirePortalTimer -= diff;
 
@@ -1054,7 +1056,7 @@ public:
             if (uiSpawnFiendTimer <= diff)
             {
                 if (Creature* pFiend = DoSpawnCreature(NPC_VOLATILE_FELFIRE_FIEND, 0, 0, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20000))
-                    pFiend->AddThreat(SelectTarget(SELECT_TARGET_RANDOM, 0), 100000.0f);
+                    AddThreat(SelectTarget(SELECT_TARGET_RANDOM, 0), 100000.0f, pFiend);
                 uiSpawnFiendTimer = urand(4000, 8000);
             } else uiSpawnFiendTimer -= diff;
         }
@@ -1107,7 +1109,7 @@ public:
 
             if (!bLockedTarget)
             {
-                me->AddThreat(me->GetVictim(), 10000000.0f);
+                AddThreat(me->GetVictim(), 10000000.0f);
                 bLockedTarget = true;
             }
 

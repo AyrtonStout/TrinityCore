@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -40,7 +40,8 @@
 #ifndef _RBAC_H
 #define _RBAC_H
 
-#include "DatabaseEnv.h"
+#include "Define.h"
+#include "DatabaseEnvFwd.h"
 #include <string>
 #include <set>
 #include <map>
@@ -56,7 +57,7 @@ enum RBACPermissions
     RBAC_PERM_JOIN_RANDOM_BG                                 = 4,
     RBAC_PERM_JOIN_ARENAS                                    = 5,
     RBAC_PERM_JOIN_DUNGEON_FINDER                            = 6,
-    //  7 - reuse
+    RBAC_PERM_IGNORE_IDLE_CONNECTION                         = 7,
     //  8 - reuse
     //  9 - reuse
     RBAC_PERM_USE_CHARACTER_TEMPLATES                        = 10, // not on 3.3.5a
@@ -213,7 +214,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_DEBUG_GETITEMSTATE                     = 306,
     RBAC_PERM_COMMAND_DEBUG_GETITEMVALUE                     = 307,
     RBAC_PERM_COMMAND_DEBUG_GETVALUE                         = 308,
-    RBAC_PERM_COMMAND_DEBUG_HOSTIL                           = 309,
+    RBAC_PERM_COMMAND_DEBUG_COMBAT                           = 309,
     RBAC_PERM_COMMAND_DEBUG_ITEMEXPIRE                       = 310,
     RBAC_PERM_COMMAND_DEBUG_LOOTRECIPIENT                    = 311,
     RBAC_PERM_COMMAND_DEBUG_LOS                              = 312,
@@ -747,7 +748,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_SERVER_RESTART_FORCE                   = 840,
     RBAC_PERM_COMMAND_NEARGRAVEYARD                          = 841,
     RBAC_PERM_COMMAND_RELOAD_CHARACTER_TEMPLATE              = 842, // not on 3.3.5a
-    RBAC_PERM_COMMAND_RELOAD_QUEST_GREETING                  = 843, // not on 3.3.5a
+    RBAC_PERM_COMMAND_RELOAD_QUEST_GREETING                  = 843,
     RBAC_PERM_COMMAND_SCENE                                  = 844, // not on 3.3.5a
     RBAC_PERM_COMMAND_SCENE_DEBUG                            = 845, // not on 3.3.5a
     RBAC_PERM_COMMAND_SCENE_PLAY                             = 846, // not on 3.3.5a
@@ -760,17 +761,27 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_RELOAD_CONVERSATION_TEMPLATE           = 853, // not on 3.3.5a
     RBAC_PERM_COMMAND_DEBUG_CONVERSATION                     = 854, // not on 3.3.5a
     RBAC_PERM_COMMAND_DEBUG_PLAY_MUSIC                       = 855,
-    RBAC_PERM_COMMAND_NPC_SPAWNGROUP                         = 856, // reserved for dynamic_spawning
-    RBAC_PERM_COMMAND_NPC_DESPAWNGROUP                       = 857, // reserved for dynamic_spawning
-    RBAC_PERM_COMMAND_GOBJECT_SPAWNGROUP                     = 858, // reserved for dynamic_spawning
-    RBAC_PERM_COMMAND_GOBJECT_DESPAWNGROUP                   = 859, // reserved for dynamic_spawning
-    RBAC_PERM_COMMAND_LIST_RESPAWNS                          = 860, // reserved for dynamic_spawning
+    RBAC_PERM_COMMAND_NPC_SPAWNGROUP                         = 856,
+    RBAC_PERM_COMMAND_NPC_DESPAWNGROUP                       = 857,
+    RBAC_PERM_COMMAND_GOBJECT_SPAWNGROUP                     = 858,
+    RBAC_PERM_COMMAND_GOBJECT_DESPAWNGROUP                   = 859,
+    RBAC_PERM_COMMAND_LIST_RESPAWNS                          = 860,
     RBAC_PERM_COMMAND_GROUP_SET                              = 861,
     RBAC_PERM_COMMAND_GROUP_ASSISTANT                        = 862,
     RBAC_PERM_COMMAND_GROUP_MAINTANK                         = 863,
     RBAC_PERM_COMMAND_GROUP_MAINASSIST                       = 864,
     RBAC_PERM_COMMAND_NPC_SHOWLOOT                           = 865,
-
+    RBAC_PERM_COMMAND_LIST_SPAWNPOINTS                       = 866,
+    RBAC_PERM_COMMAND_RELOAD_QUEST_GREETING_LOCALE           = 867,
+    RBAC_PERM_COMMAND_MODIFY_POWER                           = 868, // reserved
+    RBAC_PERM_COMMAND_DEBUG_SEND_PLAYER_CHOICE               = 869, // reserved
+    RBAC_PERM_COMMAND_DEBUG_THREATINFO                       = 870,
+    RBAC_PERM_COMMAND_DEBUG_INSTANCESPAWN                    = 871,
+    RBAC_PERM_COMMAND_SERVER_DEBUG                           = 872,
+    RBAC_PERM_COMMAND_RELOAD_CREATURE_MOVEMENT_OVERRIDE      = 873,
+    //
+    // IF YOU ADD NEW PERMISSIONS, ADD THEM IN MASTER BRANCH AS WELL!
+    //
     // custom permissions 1000+
     RBAC_PERM_MAX
 };

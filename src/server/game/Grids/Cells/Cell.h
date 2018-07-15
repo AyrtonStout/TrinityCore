@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -59,13 +59,13 @@ struct Cell
         y = data.Part.grid_y * MAX_NUMBER_OF_CELLS + data.Part.cell_y;
     }
 
-    bool DiffCell(const Cell &cell) const
+    bool DiffCell(Cell const& cell) const
     {
         return(data.Part.cell_x != cell.data.Part.cell_x ||
             data.Part.cell_y != cell.data.Part.cell_y);
     }
 
-    bool DiffGrid(const Cell &cell) const
+    bool DiffGrid(Cell const& cell) const
     {
         return(data.Part.grid_x != cell.data.Part.grid_x ||
             data.Part.grid_y != cell.data.Part.grid_y);
@@ -125,4 +125,3 @@ private:
 };
 
 #endif
-

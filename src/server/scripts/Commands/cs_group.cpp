@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,14 +15,19 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ScriptMgr.h"
 #include "CharacterCache.h"
 #include "Chat.h"
+#include "DatabaseEnv.h"
+#include "DBCStores.h"
+#include "GroupMgr.h"
 #include "Language.h"
 #include "LFG.h"
+#include "Map.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
-#include "ObjectMgr.h"
-#include "GroupMgr.h"
-#include "ScriptMgr.h"
+#include "RBAC.h"
+#include "WorldSession.h"
 
 class group_commandscript : public CommandScript
 {
@@ -136,13 +141,9 @@ public:
 
             // stop flight if need
             if (player->IsInFlight())
-            {
-                player->GetMotionMaster()->MovementExpired();
-                player->CleanupAfterTaxiFlight();
-            }
-            // save only in non-flight case
+                player->FinishTaxiFlight();
             else
-                player->SaveRecallPosition();
+                player->SaveRecallPosition(); // save only in non-flight case
 
             // before GM
             float x, y, z;
@@ -179,7 +180,7 @@ public:
         return true;
     }
 
-    static bool GroupFlagCommand(ChatHandler* handler, char const* args, GroupMemberFlags flag, const char* what)
+    static bool GroupFlagCommand(ChatHandler* handler, char const* args, GroupMemberFlags flag, char const* what)
     {
         Player* player = nullptr;
         Group* group = nullptr;
@@ -292,7 +293,7 @@ public:
         ObjectGuid guidSource;
         ObjectGuid guidTarget;
         char* nameplgrStr = strtok((char*)args, " ");
-        char* nameplStr = strtok(NULL, " ");
+        char* nameplStr = strtok(nullptr, " ");
 
         if (!handler->GetPlayerGroupAndGUIDByName(nameplgrStr, playerSource, groupSource, guidSource, true))
             return false;
@@ -335,7 +336,7 @@ public:
         ObjectGuid guidTarget;
         std::string nameTarget;
         std::string zoneName;
-        const char* onlineState = "";
+        char const* onlineState = "";
 
         // Parse the guid to uint32...
         ObjectGuid parseGUID(HighGuid::Player, uint32(atoul(args)));

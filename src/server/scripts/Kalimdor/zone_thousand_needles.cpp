@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -32,11 +32,11 @@ go_panther_cage
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
-#include "ScriptedEscortAI.h"
+#include "GameObject.h"
 #include "GameObjectAI.h"
 #include "Player.h"
+#include "ScriptedEscortAI.h"
+#include "ScriptedGossip.h"
 
 /*#####
 # npc_kanati
@@ -56,13 +56,13 @@ class npc_kanati : public CreatureScript
 public:
     npc_kanati() : CreatureScript("npc_kanati") { }
 
-    struct npc_kanatiAI : public npc_escortAI
+    struct npc_kanatiAI : public EscortAI
     {
-        npc_kanatiAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_kanatiAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -136,13 +136,13 @@ class npc_lakota_windsong : public CreatureScript
 public:
     npc_lakota_windsong() : CreatureScript("npc_lakota_windsong") { }
 
-    struct npc_lakota_windsongAI : public npc_escortAI
+    struct npc_lakota_windsongAI : public EscortAI
     {
-        npc_lakota_windsongAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_lakota_windsongAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -216,13 +216,13 @@ class npc_paoka_swiftmountain : public CreatureScript
 public:
     npc_paoka_swiftmountain() : CreatureScript("npc_paoka_swiftmountain") { }
 
-    struct npc_paoka_swiftmountainAI : public npc_escortAI
+    struct npc_paoka_swiftmountainAI : public EscortAI
     {
-        npc_paoka_swiftmountainAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_paoka_swiftmountainAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {

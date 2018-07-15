@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,17 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Containers.h"
-#include "Log.h"
-#include "Item.h"
-#include "World.h"
-#include "Config.h"
-#include "AccountMgr.h"
-#include "AuctionHouseMgr.h"
 #include "AuctionHouseBot.h"
+#include "AccountMgr.h"
 #include "AuctionHouseBotBuyer.h"
 #include "AuctionHouseBotSeller.h"
+#include "AuctionHouseMgr.h"
+#include "Config.h"
+#include "Containers.h"
+#include "DatabaseEnv.h"
 #include "GameTime.h"
+#include "Item.h"
+#include "Log.h"
+#include "World.h"
 
 AuctionBotConfig* AuctionBotConfig::instance()
 {
@@ -307,8 +308,6 @@ void AuctionBotConfig::GetConfigFromFile()
 
     SetConfig(CONFIG_AHBOT_BUYPRICE_MEAN, "AuctionHouseBot.BuyPrice.Mean", 1.0f);
     SetConfig(CONFIG_AHBOT_BUYPRICE_SIGMA, "AuctionHouseBot.BuyPrice.Sigma", 0.1f);
-
-    SetConfig(CONFIG_AHBOT_BUYPRICE_VARIANCE, "AuctionHouseBot.BuyPrice.Variance", 0.04f);
 
     SetConfig(CONFIG_AHBOT_MISCITEM_PRICE, "AuctionHouseBot.Items.Misc.Price", 1.0f);
     SetConfig(CONFIG_AHBOT_BIDPRICE_MIN, "AuctionHouseBot.BidPrice.Min", 0.6f);

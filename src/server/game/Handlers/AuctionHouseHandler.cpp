@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,19 +16,25 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ObjectMgr.h"
-#include "Player.h"
-#include "World.h"
-#include "WorldPacket.h"
 #include "WorldSession.h"
-
+#include "AccountMgr.h"
 #include "AuctionHouseMgr.h"
 #include "CharacterCache.h"
-#include "Log.h"
+#include "Creature.h"
+#include "DatabaseEnv.h"
+#include "DBCStructure.h"
+#include "GameTime.h"
+#include "Item.h"
 #include "Language.h"
+#include "Log.h"
+#include "Mail.h"
+#include "ObjectAccessor.h"
+#include "ObjectMgr.h"
+#include "Player.h"
 #include "UpdateMask.h"
 #include "Util.h"
-#include "AccountMgr.h"
+#include "World.h"
+#include "WorldPacket.h"
 
 //void called when player click on auctioneer npc
 void WorldSession::HandleAuctionHelloOpcode(WorldPacket& recvData)
@@ -280,7 +286,7 @@ void WorldSession::HandleAuctionSellItem(WorldPacket& recvData)
             return;
         }
 
-        const AuctionHouseEntry* AHEntry = sAuctionMgr->GetAuctionHouseEntry(auctioneerInfo->faction);
+        AuctionHouseEntry const* AHEntry = sAuctionMgr->GetAuctionHouseEntry(auctioneerInfo->faction);
         AH->houseId = AHEntry->houseId;
     }
 
@@ -302,7 +308,7 @@ void WorldSession::HandleAuctionSellItem(WorldPacket& recvData)
         AH->bidder = 0;
         AH->bid = 0;
         AH->buyout = buyout;
-        AH->expire_time = time(NULL) + auctionTime;
+        AH->expire_time = GameTime::GetGameTime() + auctionTime;
         AH->deposit = deposit;
         AH->etime = etime;
         AH->auctionHouseEntry = auctionHouseEntry;
@@ -359,7 +365,7 @@ void WorldSession::HandleAuctionSellItem(WorldPacket& recvData)
         AH->bidder = 0;
         AH->bid = 0;
         AH->buyout = buyout;
-        AH->expire_time = time(NULL) + auctionTime;
+        AH->expire_time = GameTime::GetGameTime() + auctionTime;
         AH->deposit = deposit;
         AH->etime = etime;
         AH->auctionHouseEntry = auctionHouseEntry;
@@ -509,6 +515,16 @@ void WorldSession::HandleAuctionPlaceBid(WorldPacket& recvData)
         stmt->setUInt32(1, auction->bid);
         stmt->setUInt32(2, auction->Id);
         trans->Append(stmt);
+
+        if (auction->bidders.find(player->GetGUID()) == auction->bidders.end())
+        {
+            // save new bidder in list, and save record to db
+            auction->bidders.insert(player->GetGUID());
+            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_AUCTION_BIDDERS);
+            stmt->setUInt32(0, auction->Id);
+            stmt->setUInt32(1, auction->bidder);
+            trans->Append(stmt);
+        }
 
         SendAuctionCommandResult(auction->Id, AUCTION_PLACE_BID, ERR_AUCTION_OK, 0);
     }

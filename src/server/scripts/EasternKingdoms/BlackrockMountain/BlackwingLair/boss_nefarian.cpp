@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,10 +17,14 @@
  */
 
 #include "ScriptMgr.h"
-#include "ScriptedGossip.h"
-#include "ScriptedCreature.h"
 #include "blackwing_lair.h"
+#include "GameObject.h"
+#include "InstanceScript.h"
+#include "MotionMaster.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
+#include "TemporarySummon.h"
 
 enum Events
 {
@@ -201,7 +205,7 @@ public:
 
         void BeginEvent(Player* target)
         {
-            _EnterCombat();
+            _JustEngagedWith();
 
             Talk(SAY_GAMESBEGIN_2);
 
@@ -209,7 +213,7 @@ public:
             me->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
             DoCast(me, SPELL_NEFARIANS_BARRIER);
             me->SetStandState(UNIT_STAND_STATE_STAND);
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetImmuneToPC(false);
             AttackStart(target);
             events.ScheduleEvent(EVENT_SHADOW_BOLT, urand(3000, 10000));
             events.ScheduleEvent(EVENT_FEAR, urand(10000, 20000));
@@ -317,7 +321,7 @@ public:
                                         DoCast(target, SPELL_SHADOWBOLT);
                                     break;
                             }
-                            DoResetThreat();
+                            ResetThreatList();
                             events.ScheduleEvent(EVENT_SHADOW_BOLT, urand(3000, 10000));
                             break;
                         case EVENT_FEAR:
@@ -349,9 +353,10 @@ public:
                                     if (Creature* nefarian = me->SummonCreature(NPC_NEFARIAN, NefarianLoc[0]))
                                     {
                                         nefarian->setActive(true);
+                                        nefarian->SetFarVisible(true);
                                         nefarian->SetCanFly(true);
                                         nefarian->SetDisableGravity(true);
-                                        nefarian->CastSpell((Unit*)NULL, SPELL_SHADOWFLAME_INITIAL);
+                                        nefarian->CastSpell(nullptr, SPELL_SHADOWFLAME_INITIAL);
                                         nefarian->GetMotionMaster()->MovePoint(1, NefarianLoc[1]);
                                     }
                                     events.CancelEvent(EVENT_MIND_CONTROL);
@@ -388,7 +393,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<boss_victor_nefariusAI>(creature);
+        return GetBlackwingLairAI<boss_victor_nefariusAI>(creature);
     }
 };
 
@@ -421,7 +426,7 @@ public:
             canDespawn = true;
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             events.ScheduleEvent(EVENT_SHADOWFLAME, 12000);
             events.ScheduleEvent(EVENT_FEAR, urand(25000, 35000));
@@ -432,7 +437,7 @@ public:
             Talk(SAY_RANDOM);
         }
 
-        void JustDied(Unit* /*Killer*/) override
+        void JustDied(Unit* /*killer*/) override
         {
             _JustDied();
             Talk(SAY_DEATH);
@@ -453,7 +458,7 @@ public:
 
             if (id == 1)
             {
-                me->SetInCombatWithZone();
+                DoZoneInCombat();
                 if (me->GetVictim())
                     AttackStart(me->GetVictim());
             }
@@ -572,7 +577,7 @@ public:
                     if ((*itr) && !(*itr)->IsAlive())
                     {
                         (*itr)->Respawn();
-                        (*itr)->SetInCombatWithZone();
+                        DoZoneInCombat((*itr));
                         (*itr)->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                         (*itr)->SetReactState(REACT_AGGRESSIVE);
                         (*itr)->SetStandState(UNIT_STAND_STATE_STAND);
@@ -594,7 +599,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<boss_nefarianAI>(creature);
+        return GetBlackwingLairAI<boss_nefarianAI>(creature);
     }
 };
 

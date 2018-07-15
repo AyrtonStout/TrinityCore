@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -24,9 +24,10 @@
 #include "Corpse.h"
 #include "Player.h"
 #include "MapManager.h"
+#include "MotionMaster.h"
+#include "MovementGenerator.h"
 #include "Transport.h"
 #include "Battleground.h"
-#include "WaypointMovementGenerator.h"
 #include "InstanceSaveMgr.h"
 #include "ObjectMgr.h"
 #include "Vehicle.h"
@@ -85,9 +86,7 @@ void WorldSession::HandleMoveWorldportAck()
         return;
     }
 
-    float z = loc.GetPositionZ();
-    if (GetPlayer()->HasUnitMovementFlag(MOVEMENTFLAG_HOVER))
-        z += GetPlayer()->GetFloatValue(UNIT_FIELD_HOVERHEIGHT);
+    float z = loc.GetPositionZ() + GetPlayer()->GetHoverOffset();
     GetPlayer()->Relocate(loc.GetPositionX(), loc.GetPositionY(), z, loc.GetOrientation());
     GetPlayer()->SetFallInformation(0, GetPlayer()->GetPositionZ());
 
@@ -128,29 +127,29 @@ void WorldSession::HandleMoveWorldportAck()
     GetPlayer()->SendInitialPacketsAfterAddToMap();
 
     // flight fast teleport case
-    if (GetPlayer()->GetMotionMaster()->GetCurrentMovementGeneratorType() == FLIGHT_MOTION_TYPE)
+    if (GetPlayer()->IsInFlight())
     {
         if (!_player->InBattleground())
         {
             // short preparations to continue flight
-            FlightPathMovementGenerator* flight = (FlightPathMovementGenerator*)(GetPlayer()->GetMotionMaster()->top());
-            flight->Initialize(GetPlayer());
+            MovementGenerator* movementGenerator = GetPlayer()->GetMotionMaster()->GetCurrentMovementGenerator();
+            movementGenerator->Initialize(GetPlayer());
             return;
         }
 
         // battleground state prepare, stop flight
-        GetPlayer()->GetMotionMaster()->MovementExpired();
-        GetPlayer()->CleanupAfterTaxiFlight();
+        GetPlayer()->FinishTaxiFlight();
     }
 
     // resurrect character at enter into instance where his corpse exist after add to map
-
     if (mEntry->IsDungeon() && !GetPlayer()->IsAlive())
+    {
         if (GetPlayer()->GetCorpseLocation().GetMapId() == mEntry->MapID)
         {
             GetPlayer()->ResurrectPlayer(0.5f, false);
             GetPlayer()->SpawnCorpseBones();
         }
+    }
 
     bool allowMount = !mEntry->IsDungeon() || mEntry->IsBattlegroundOrArena();
     if (mInstance)
@@ -163,7 +162,7 @@ void WorldSession::HandleMoveWorldportAck()
             {
                 if (time_t timeReset = sInstanceSaveMgr->GetResetTimeFor(mEntry->MapID, diff))
                 {
-                    uint32 timeleft = uint32(timeReset - time(NULL));
+                    uint32 timeleft = uint32(timeReset - GameTime::GetGameTime());
                     GetPlayer()->SendInstanceResetWarning(mEntry->MapID, diff, timeleft, true);
                 }
             }
@@ -257,7 +256,7 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvData)
 
     Unit* mover = _player->m_unitMovedByMe;
 
-    ASSERT(mover != NULL);                      // there must always be a mover
+    ASSERT(mover != nullptr);                      // there must always be a mover
 
     Player* plrMover = mover->ToPlayer();
 

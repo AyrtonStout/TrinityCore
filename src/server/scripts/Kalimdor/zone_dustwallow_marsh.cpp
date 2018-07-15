@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -30,11 +30,12 @@ npc_cassa_crimsonwing - handled by npc_taxi
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "ScriptedEscortAI.h"
-#include "ScriptedGossip.h"
-#include "SpellScript.h"
+#include "MotionMaster.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
+#include "SpellInfo.h"
+#include "SpellScript.h"
 #include "WorldSession.h"
 
 /*######
@@ -128,8 +129,9 @@ public:
             {
                 Damage = 0;
 
-                if (Player* player = pDoneBy->GetCharmerOrOwnerPlayerOrPlayerItself())
-                    player->GroupEventHappens(QUEST_MISSING_DIPLO_PT16, me);
+                if (pDoneBy)
+                    if (Player* player = pDoneBy->GetCharmerOrOwnerPlayerOrPlayerItself())
+                        player->GroupEventHappens(QUEST_MISSING_DIPLO_PT16, me);
 
                 Talk(EMOTE_SURRENDER);
                 EnterEvadeMode();
@@ -199,7 +201,7 @@ public:
                 return;
 
             me->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetImmuneToPC(false);
             SetCombatMovement(true);
 
             if (me->IsInCombat())
@@ -226,7 +228,6 @@ public:
 
 };
 
-
 enum SpellScripts
 {
     SPELL_OOZE_ZAP              = 42489,
@@ -246,9 +247,7 @@ class spell_ooze_zap : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_OOZE_ZAP))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_OOZE_ZAP });
             }
 
             SpellCastResult CheckRequirement()
@@ -293,9 +292,7 @@ class spell_ooze_zap_channel_end : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_OOZE_ZAP_CHANNEL_END))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_OOZE_ZAP_CHANNEL_END });
             }
 
             void HandleDummy(SpellEffIndex effIndex)
@@ -329,9 +326,7 @@ class spell_energize_aoe : public SpellScriptLoader
 
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
-                if (!sSpellMgr->GetSpellInfo(SPELL_ENERGIZED))
-                    return false;
-                return true;
+                return ValidateSpellInfo({ SPELL_ENERGIZED });
             }
 
             void FilterTargets(std::list<WorldObject*>& targets)

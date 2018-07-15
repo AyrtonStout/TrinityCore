@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,10 +17,11 @@
  */
 
 #include "ScriptMgr.h"
+#include "blackrock_depths.h"
+#include "InstanceScript.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
-#include "blackrock_depths.h"
-#include "Player.h"
 
 enum Spells
 {
@@ -102,7 +103,7 @@ class boss_gloomrel : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return GetInstanceAI<boss_gloomrelAI>(creature);
+            return GetBlackrockDepthsAI<boss_gloomrelAI>(creature);
         }
 };
 
@@ -152,7 +153,7 @@ class boss_doomrel : public CreatureScript
                 me->SetFaction(FACTION_FRIENDLY);
 
                 // was set before event start, so set again
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                me->SetImmuneToPC(true);
 
                 if (_instance->GetData(DATA_GHOSTKILL) >= 7)
                     me->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
@@ -160,7 +161,7 @@ class boss_doomrel : public CreatureScript
                     me->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 _events.ScheduleEvent(EVENT_SHADOW_BOLT_VOLLEY, 10000);
                 _events.ScheduleEvent(EVENT_IMMOLATE, 18000);
@@ -240,7 +241,7 @@ class boss_doomrel : public CreatureScript
                         CloseGossipMenuFor(player);
                         //start event here
                         me->SetFaction(FACTION_DARK_IRON_DWARVES);
-                        me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                        me->SetImmuneToPC(false);
                         me->AI()->AttackStart(player);
 
                         _instance->SetGuidData(DATA_EVENSTARTER, player->GetGUID());
@@ -265,7 +266,7 @@ class boss_doomrel : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return GetInstanceAI<boss_doomrelAI>(creature);
+            return GetBlackrockDepthsAI<boss_doomrelAI>(creature);
         }
 };
 

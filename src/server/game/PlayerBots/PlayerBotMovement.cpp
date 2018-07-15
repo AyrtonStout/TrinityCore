@@ -145,7 +145,7 @@ void PlayerBot::FacePosition(Position p)
 {
     Player *self = m_session->GetPlayer();
 
-    float angle = self->GetAngle(p);
+    float angle = self->GetAbsoluteAngle(p);
 
     WorldPacket *packet = new WorldPacket();
     packet->SetOpcode(MSG_MOVE_SET_FACING);
@@ -455,7 +455,7 @@ bool PlayerBot::WalkToPoint(Position p)
         delete m_targetPoint;
     }
 
-    m_targetPoint = new G3D::Vector3(p);
+    m_targetPoint = new G3D::Vector3(p.GetPositionX(), p.GetPositionY(), p.GetPositionZ());
     m_pointWalkLock.unlock();
     TC_LOG_INFO("server", "Exit walk to point 2");
     return true;
@@ -579,8 +579,8 @@ void PlayerBot::GeneratePath(float x, float y, float z)
     Movement::PointsArray pathPoints = generator->GetPath();
 
     for (auto &point : pathPoints) {
-        TC_LOG_INFO("server", "X: " + std::to_string(point.x));
-        TC_LOG_INFO("server", "Y: " + std::to_string(point.y));
-        TC_LOG_INFO("server", "Z: " + std::to_string(point.z));
+        TC_LOG_INFO("server", "X: %f", point.x);
+        TC_LOG_INFO("server", "Y: %f", point.y);
+        TC_LOG_INFO("server", "Z: %f", point.z);
     }
 }

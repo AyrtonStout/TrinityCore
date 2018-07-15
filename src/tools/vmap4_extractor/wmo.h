@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ class WMOManager;
 class MPQFile;
 
 /* for whatever reason a certain company just can't stick to one coordinate system... */
-static inline Vec3D fixCoords(const Vec3D &v){ return Vec3D(v.z, v.x, v.y); }
+static inline Vec3D fixCoords(Vec3D const& v){ return Vec3D(v.z, v.x, v.y); }
 
 class WMORoot
 {

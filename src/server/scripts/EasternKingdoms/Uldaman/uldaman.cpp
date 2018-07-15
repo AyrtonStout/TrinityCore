@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -30,10 +30,12 @@ at_map_chamber
 EndContentData */
 
 #include "ScriptMgr.h"
-#include "ScriptedCreature.h"
+#include "GameObject.h"
 #include "GameObjectAI.h"
-#include "uldaman.h"
+#include "InstanceScript.h"
 #include "Player.h"
+#include "ScriptedCreature.h"
+#include "uldaman.h"
 
 /*######
 ## npc_jadespine_basilisk
@@ -72,7 +74,7 @@ class npc_jadespine_basilisk : public CreatureScript
                 Initialize();
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
             }
 
@@ -91,13 +93,7 @@ class npc_jadespine_basilisk : public CreatureScript
                     //Stop attacking target thast asleep and pick new target
                     uiCslumberTimer = 28000;
 
-                    Unit* target = SelectTarget(SELECT_TARGET_TOPAGGRO, 0);
-
-                    if (!target || target == me->GetVictim())
-                        target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true);
-
-                    if (target)
-                        me->TauntApply(target);
+                    me->GetThreatManager().ResetThreat(me->GetVictim());
 
                 } else uiCslumberTimer -= uiDiff;
 
@@ -107,7 +103,7 @@ class npc_jadespine_basilisk : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return new npc_jadespine_basiliskAI(creature);
+            return GetUldamanAI<npc_jadespine_basiliskAI>(creature);
         }
 };
 
@@ -135,7 +131,7 @@ class go_keystone_chamber : public GameObjectScript
 
         GameObjectAI* GetAI(GameObject* go) const override
         {
-            return GetInstanceAI<go_keystone_chamberAI>(go);
+            return GetUldamanAI<go_keystone_chamberAI>(go);
         }
 };
 
@@ -172,4 +168,3 @@ void AddSC_uldaman()
     new go_keystone_chamber();
     new AreaTrigger_at_map_chamber();
 }
-

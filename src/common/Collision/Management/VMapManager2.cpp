@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -55,7 +55,7 @@ namespace VMAP
     void VMapManager2::InitializeThreadUnsafe(const std::vector<uint32>& mapIds)
     {
         // the caller must pass the list of all mapIds that will be used in the VMapManager2 lifetime
-        for (const uint32& mapId : mapIds)
+        for (uint32 const& mapId : mapIds)
             iInstanceMapTrees.insert(InstanceTreeMap::value_type(mapId, nullptr));
 
         thread_safe_environment = false;
@@ -82,7 +82,7 @@ namespace VMAP
         return fname.str();
     }
 
-    int VMapManager2::loadMap(const char* basePath, unsigned int mapId, int x, int y)
+    int VMapManager2::loadMap(char const* basePath, unsigned int mapId, int x, int y)
     {
         int result = VMAP_LOAD_RESULT_IGNORED;
         if (isMapLoadingEnabled())
@@ -234,7 +234,7 @@ namespace VMAP
         return VMAP_INVALID_HEIGHT_VALUE;
     }
 
-    bool VMapManager2::getAreaInfo(unsigned int mapId, float x, float y, float& z, uint32& flags, int32& adtId, int32& rootId, int32& groupId) const
+    bool VMapManager2::getAreaInfo(uint32 mapId, float x, float y, float& z, uint32& flags, int32& adtId, int32& rootId, int32& groupId) const
     {
         if (!IsVMAPDisabledForPtr(mapId, VMAP_DISABLE_AREAFLAG))
         {
@@ -252,7 +252,7 @@ namespace VMAP
         return false;
     }
 
-    bool VMapManager2::GetLiquidLevel(uint32 mapId, float x, float y, float z, uint8 reqLiquidType, float& level, float& floor, uint32& type) const
+    bool VMapManager2::GetLiquidLevel(uint32 mapId, float x, float y, float z, uint8 reqLiquidType, float& level, float& floor, uint32& type, uint32& mogpFlags) const
     {
         if (!IsVMAPDisabledForPtr(mapId, VMAP_DISABLE_LIQUIDSTATUS))
         {
@@ -267,6 +267,7 @@ namespace VMAP
                     ASSERT(floor < std::numeric_limits<float>::max());
                     ASSERT(info.hitModel);
                     type = info.hitModel->GetLiquidType();  // entry from LiquidType.dbc
+                    mogpFlags = info.hitModel->GetMogpFlags();
                     if (reqLiquidType && !(GetLiquidFlagsPtr(type) & reqLiquidType))
                         return false;
                     ASSERT(info.hitInstance);
@@ -297,13 +298,15 @@ namespace VMAP
             Vector3 pos = convertPositionToInternalRep(x, y, z);
             if (instanceTree->second->GetLocationInfo(pos, info))
             {
+                ASSERT(info.hitModel);
+                ASSERT(info.hitInstance);
                 data.floorZ = info.ground_Z;
                 uint32 liquidType = info.hitModel->GetLiquidType();
                 float liquidLevel;
                 if (!reqLiquidType || (GetLiquidFlagsPtr(liquidType) & reqLiquidType))
                     if (info.hitInstance->GetLiquidLevel(pos, info, liquidLevel))
                         data.liquidInfo = boost::in_place(liquidType, liquidLevel);
-                
+
                 if (!IsVMAPDisabledForPtr(mapId, VMAP_DISABLE_AREAFLAG))
                     data.areaInfo = boost::in_place(info.hitInstance->adtId, info.rootId, info.hitModel->GetWmoID(), info.hitModel->GetMogpFlags());
             }
@@ -323,7 +326,7 @@ namespace VMAP
             {
                 VMAP_ERROR_LOG("misc", "VMapManager2: could not load '%s%s.vmo'", basepath.c_str(), filename.c_str());
                 delete worldmodel;
-                return NULL;
+                return nullptr;
             }
             VMAP_DEBUG_LOG("maps", "VMapManager2: loading file '%s%s'", basepath.c_str(), filename.c_str());
 
@@ -355,7 +358,7 @@ namespace VMAP
         }
     }
 
-    LoadResult VMapManager2::existsMap(const char* basePath, unsigned int mapId, int x, int y)
+    LoadResult VMapManager2::existsMap(char const* basePath, unsigned int mapId, int x, int y)
     {
         return StaticMapTree::CanLoadMap(std::string(basePath), mapId, x, y);
     }

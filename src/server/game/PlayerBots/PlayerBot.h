@@ -2,8 +2,11 @@
 #define __PLAYERBOT_H
 
 #include "Common.h"
+#include <G3D/Vector3.h>
 #include "GridNotifiers.h"
 #include "Log.h"
+#include "Map.h"
+#include "PathGenerator.h"
 #include "Player.h"
 #include "PlayerBotSpells.h"
 #include "WorldSession.h"

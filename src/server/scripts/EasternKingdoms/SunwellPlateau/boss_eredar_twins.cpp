@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,9 +16,10 @@
  */
 
 #include "ScriptMgr.h"
+#include "InstanceScript.h"
 #include "ScriptedCreature.h"
-#include "sunwell_plateau.h"
 #include "SpellInfo.h"
+#include "sunwell_plateau.h"
 
 enum Quotes
 {
@@ -119,7 +120,7 @@ public:
                 if (temp->isDead())
                     temp->Respawn();
                 else if (temp->GetVictim())
-                    me->getThreatManager().addThreat(temp->GetVictim(), 0.0f);
+                    AddThreat(temp->GetVictim(), 0.0f);
             }
 
             if (!me->IsInCombat())
@@ -130,7 +131,7 @@ public:
             instance->SetBossState(DATA_EREDAR_TWINS, NOT_STARTED);
         }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             DoZoneInCombat();
 
@@ -160,7 +161,7 @@ public:
                 me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
         }
 
-        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
         {
             switch (spell->Id)
             {
@@ -266,15 +267,15 @@ public:
 
             if (ShadowimageTimer <= diff)
             {
-                Unit* target = NULL;
-                Creature* temp = NULL;
+                Unit* target = nullptr;
+                Creature* temp = nullptr;
                 for (uint8 i = 0; i<3; ++i)
                 {
                     target = SelectTarget(SELECT_TARGET_RANDOM, 0);
                     temp = DoSpawnCreature(NPC_SHADOW_IMAGE, 0, 0, 0, 0, TEMPSUMMON_CORPSE_DESPAWN, 10000);
                     if (temp && target)
                     {
-                        temp->AddThreat(target, 1000000); //don't change target(healers)
+                        AddThreat(target, 1000000.0f, temp); //don't change target(healers)
                         temp->AI()->AttackStart(target);
                     }
                 }
@@ -371,7 +372,7 @@ public:
                 if (temp->isDead())
                     temp->Respawn();
                 else if (temp->GetVictim())
-                    me->getThreatManager().addThreat(temp->GetVictim(), 0.0f);
+                    AddThreat(temp->GetVictim(), 0.0f);
             }
 
             if (!me->IsInCombat())
@@ -382,7 +383,7 @@ public:
             instance->SetBossState(DATA_EREDAR_TWINS, NOT_STARTED);
         }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             DoZoneInCombat();
 
@@ -436,7 +437,7 @@ public:
                 me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
         }
 
-        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
         {
             switch (spell->Id)
             {
@@ -549,7 +550,7 @@ public:
                 Creature* sisiter = instance->GetCreature(DATA_SACROLASH);
                 if (sisiter && !sisiter->isDead() && sisiter->GetVictim())
                 {
-                    me->AddThreat(sisiter->GetVictim(), 0.0f);
+                    AddThreat(sisiter->GetVictim(), 0.0f);
                     DoStartNoMovement(sisiter->GetVictim());
                     me->Attack(sisiter->GetVictim(), false);
                 }
@@ -671,9 +672,9 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
-        void SpellHitTarget(Unit* target, const SpellInfo* spell) override
+        void SpellHitTarget(Unit* target, SpellInfo const* spell) override
         {
             switch (spell->Id)
             {

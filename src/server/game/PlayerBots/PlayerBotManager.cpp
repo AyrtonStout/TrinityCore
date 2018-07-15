@@ -50,7 +50,7 @@ void PlayerBotManager::BotUpdateThread()
         uint32 endTime = getMSTime();
         uint32 sleepTime = 250 - (endTime - startTime);
         if (sleepTime < 0) {
-            TC_LOG_INFO("server", "Bot Update Thread can't keep up! Update finished " + std::to_string(sleepTime) + "ms too slow");
+            TC_LOG_INFO("server", "%s", "Bot Update Thread can't keep up! Update finished " + std::to_string(sleepTime) + "ms too slow");
             sleepTime = 0;
         }
 
@@ -370,6 +370,6 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
             TC_LOG_INFO("server", "Talents info");
             break;
         default:
-            TC_LOG_INFO("server", std::to_string(packet->GetOpcode()));
+            TC_LOG_INFO("server", "%S", std::to_string(packet->GetOpcode()));
     }
 }

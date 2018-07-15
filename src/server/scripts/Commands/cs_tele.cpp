@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,13 +22,17 @@ Comment: All tele related commands
 Category: commandscripts
 EndScriptData */
 
+#include "ScriptMgr.h"
 #include "Chat.h"
+#include "DatabaseEnv.h"
+#include "DBCStores.h"
 #include "Group.h"
 #include "Language.h"
 #include "MapManager.h"
 #include "ObjectMgr.h"
 #include "Player.h"
-#include "ScriptMgr.h"
+#include "RBAC.h"
+#include "WorldSession.h"
 
 class tele_commandscript : public CommandScript
 {
@@ -47,12 +51,12 @@ public:
         };
         static std::vector<ChatCommand> commandTable =
         {
-            { "tele", rbac::RBAC_PERM_COMMAND_TELE, false, NULL, "", teleCommandTable },
+            { "tele", rbac::RBAC_PERM_COMMAND_TELE, false, nullptr, "", teleCommandTable },
         };
         return commandTable;
     }
 
-    static bool HandleTeleAddCommand(ChatHandler* handler, const char* args)
+    static bool HandleTeleAddCommand(ChatHandler* handler, char const* args)
     {
         if (!*args)
             return false;
@@ -92,7 +96,7 @@ public:
         return true;
     }
 
-    static bool HandleTeleDelCommand(ChatHandler* handler, const char* args)
+    static bool HandleTeleDelCommand(ChatHandler* handler, char const* args)
     {
         if (!*args)
             return false;
@@ -112,7 +116,7 @@ public:
     }
 
     // teleport player to given game_tele.entry
-    static bool HandleTeleNameCommand(ChatHandler* handler, const char* args)
+    static bool HandleTeleNameCommand(ChatHandler* handler, char const* args)
     {
         char* nameStr;
         char* teleStr;
@@ -180,20 +184,16 @@ public:
 
             // stop flight if need
             if (target->IsInFlight())
-            {
-                target->GetMotionMaster()->MovementExpired();
-                target->CleanupAfterTaxiFlight();
-            }
-            // save only in non-flight case
+                target->FinishTaxiFlight();
             else
-                target->SaveRecallPosition();
+                target->SaveRecallPosition(); // save only in non-flight case
 
             target->TeleportTo(tele->mapId, tele->position_x, tele->position_y, tele->position_z, tele->orientation);
         }
         else
         {
             // check offline security
-            if (handler->HasLowerSecurity(NULL, target_guid))
+            if (handler->HasLowerSecurity(nullptr, target_guid))
                 return false;
 
             std::string nameLink = handler->playerLink(target_name);
@@ -209,7 +209,7 @@ public:
     }
 
     //Teleport group to given game_tele.entry
-    static bool HandleTeleGroupCommand(ChatHandler* handler, const char* args)
+    static bool HandleTeleGroupCommand(ChatHandler* handler, char const* args)
     {
         if (!*args)
             return false;
@@ -253,7 +253,7 @@ public:
             return false;
         }
 
-        for (GroupReference* itr = grp->GetFirstMember(); itr != NULL; itr = itr->next())
+        for (GroupReference* itr = grp->GetFirstMember(); itr != nullptr; itr = itr->next())
         {
             Player* player = itr->GetSource();
 
@@ -278,13 +278,9 @@ public:
 
             // stop flight if need
             if (player->IsInFlight())
-            {
-                player->GetMotionMaster()->MovementExpired();
-                player->CleanupAfterTaxiFlight();
-            }
-            // save only in non-flight case
+                player->FinishTaxiFlight();
             else
-                player->SaveRecallPosition();
+                player->SaveRecallPosition(); // save only in non-flight case
 
             player->TeleportTo(tele->mapId, tele->position_x, tele->position_y, tele->position_z, tele->orientation);
         }
@@ -292,16 +288,15 @@ public:
         return true;
     }
 
-    static bool HandleTeleCommand(ChatHandler* handler, const char* args)
+    static bool HandleTeleCommand(ChatHandler* handler, char const* args)
     {
         if (!*args)
             return false;
 
-        Player* me = handler->GetSession()->GetPlayer();
+        Player* player = handler->GetSession()->GetPlayer();
 
         // id, or string, or [name] Shift-click form |color|Htele:id|h[name]|h|r
         GameTele const* tele = handler->extractGameTeleFromLink((char*)args);
-
         if (!tele)
         {
             handler->SendSysMessage(LANG_COMMAND_TELE_NOTFOUND);
@@ -309,7 +304,7 @@ public:
             return false;
         }
 
-        if (me->IsInCombat())
+        if (player->IsInCombat() && !handler->GetSession()->HasPermission(rbac::RBAC_PERM_COMMAND_TELE_NAME))
         {
             handler->SendSysMessage(LANG_YOU_IN_COMBAT);
             handler->SetSentErrorMessage(true);
@@ -317,7 +312,7 @@ public:
         }
 
         MapEntry const* map = sMapStore.LookupEntry(tele->mapId);
-        if (!map || (map->IsBattlegroundOrArena() && (me->GetMapId() != tele->mapId || !me->IsGameMaster())))
+        if (!map || (map->IsBattlegroundOrArena() && (player->GetMapId() != tele->mapId || !player->IsGameMaster())))
         {
             handler->SendSysMessage(LANG_CANNOT_TELE_TO_BG);
             handler->SetSentErrorMessage(true);
@@ -325,16 +320,12 @@ public:
         }
 
         // stop flight if need
-        if (me->IsInFlight())
-        {
-            me->GetMotionMaster()->MovementExpired();
-            me->CleanupAfterTaxiFlight();
-        }
-        // save only in non-flight case
+        if (player->IsInFlight())
+            player->FinishTaxiFlight();
         else
-            me->SaveRecallPosition();
+            player->SaveRecallPosition(); // save only in non-flight case
 
-        me->TeleportTo(tele->mapId, tele->position_x, tele->position_y, tele->position_z, tele->orientation);
+        player->TeleportTo(tele->mapId, tele->position_x, tele->position_y, tele->position_z, tele->orientation);
         return true;
     }
 };

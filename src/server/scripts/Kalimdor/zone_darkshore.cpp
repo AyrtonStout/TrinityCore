@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -104,7 +104,7 @@ public:
             }
         }
 
-        void SpellHit(Unit* /*pCaster*/, const SpellInfo* pSpell) override
+        void SpellHit(Unit* /*pCaster*/, SpellInfo const* pSpell) override
         {
             if (HasFollowState(STATE_FOLLOW_INPROGRESS | STATE_FOLLOW_PAUSED) && pSpell->Id == SPELL_AWAKEN)
                 ClearSleeping();
@@ -204,13 +204,13 @@ class npc_prospector_remtravel : public CreatureScript
 public:
     npc_prospector_remtravel() : CreatureScript("npc_prospector_remtravel") { }
 
-    struct npc_prospector_remtravelAI : public npc_escortAI
+    struct npc_prospector_remtravelAI : public EscortAI
     {
-        npc_prospector_remtravelAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_prospector_remtravelAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             if (urand(0, 1))
                 Talk(SAY_REM_AGGRO, who);
@@ -222,7 +222,7 @@ public:
             //pSummoned->AI()->AttackStart(me);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (Player* player = GetPlayerForEscort())
             {

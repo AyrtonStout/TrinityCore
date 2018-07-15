@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -23,12 +23,14 @@ SDComment: Correct spawning and Event NYI
 SDCategory: Molten Core
 EndScriptData */
 
-#include "ObjectMgr.h"
 #include "ScriptMgr.h"
+#include "InstanceScript.h"
+#include "Map.h"
+#include "molten_core.h"
+#include "ObjectMgr.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
-#include "molten_core.h"
-#include "Player.h"
 
 enum Texts
 {
@@ -87,9 +89,9 @@ class boss_majordomo : public CreatureScript
                     Talk(SAY_SLAY);
             }
 
-            void EnterCombat(Unit* who) override
+            void JustEngagedWith(Unit* who) override
             {
-                BossAI::EnterCombat(who);
+                BossAI::JustEngagedWith(who);
                 Talk(SAY_AGGRO);
                 events.ScheduleEvent(EVENT_MAGIC_REFLECTION, 30000);
                 events.ScheduleEvent(EVENT_DAMAGE_REFLECTION, 15000);
@@ -108,7 +110,7 @@ class boss_majordomo : public CreatureScript
 
                     if (!me->FindNearestCreature(NPC_FLAMEWAKER_HEALER, 100.0f) && !me->FindNearestCreature(NPC_FLAMEWAKER_ELITE, 100.0f))
                     {
-                        instance->UpdateEncounterState(ENCOUNTER_CREDIT_KILL_CREATURE, me->GetEntry(), me);
+                        instance->UpdateEncounterStateForKilledCreature(me->GetEntry(), me);
                         me->SetFaction(FACTION_FRIENDLY);
                         EnterEvadeMode();
                         Talk(SAY_DEFEAT);
@@ -208,7 +210,7 @@ class boss_majordomo : public CreatureScript
 
         CreatureAI* GetAI(Creature* creature) const override
         {
-            return GetInstanceAI<boss_majordomoAI>(creature);
+            return GetMoltenCoreAI<boss_majordomoAI>(creature);
         }
 };
 
