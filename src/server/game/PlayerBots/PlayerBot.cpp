@@ -246,6 +246,10 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "reset patrol") {
         ResetPatrol();
     }
+    else if (message == "tp") {
+        Player *sender = ObjectAccessor::FindPlayer(ObjectGuid(senderGuid));
+        TeleportToUnit(sender);
+    }
 }
 
 void PlayerBot::CastSpell(PlayerBotSpell spell)

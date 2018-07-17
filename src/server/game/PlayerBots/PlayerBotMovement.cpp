@@ -584,3 +584,19 @@ void PlayerBot::GeneratePath(float x, float y, float z)
         TC_LOG_INFO("server", "Z: %f", point.z);
     }
 }
+
+// FIXME This function does teleport the unit, and thus is still useful. But this breaks the bot after it teleports and the server must be restarted
+void PlayerBot::TeleportToUnit(const Unit *unit)
+{
+    TC_LOG_INFO("server", "Initiating teleport");
+    Player *self = m_session->GetPlayer();
+    self->TeleportTo(unit->GetMapId(), unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetOrientation(), 0);
+    TC_LOG_INFO("server", "Finished teleport");
+
+    /// This stuff may possibly help in making this not break. Unsure
+    //WorldPacket *packet = new WorldPacket();
+    //packet->SetOpcode(MSG_MOVE_WORLDPORT_ACK);
+    //TC_LOG_INFO("server", "Acking world port");
+    //m_session->HandleMoveWorldportAckOpcode(*packet);
+    //TC_LOG_INFO("server", "Acking world port done");
+}

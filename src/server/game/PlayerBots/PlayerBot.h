@@ -62,6 +62,8 @@ public:
     void RPWalk(bool rpWalk);
     void StopAllWalking();
 
+    void TeleportToUnit(const Unit *unit);
+
     void FollowPlayer(uint64 playerGuid);
     void StopFollowingPlayer();
     void UpdateFollowingPlayer();

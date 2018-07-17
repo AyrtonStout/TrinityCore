@@ -370,6 +370,6 @@ void PlayerBotManager::HandlePacket(WorldPacket *packet, uint64 botGuid)
             TC_LOG_INFO("server", "Talents info");
             break;
         default:
-            TC_LOG_INFO("server", "%S", std::to_string(packet->GetOpcode()));
+            TC_LOG_INFO("server", "%s", std::to_string(packet->GetOpcode()));
     }
 }
