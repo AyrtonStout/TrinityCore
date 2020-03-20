@@ -55,6 +55,7 @@ float PlayerBot::GetEffectiveOrientation()
 
 Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
 {
+    TC_LOG_INFO("server", "Calculate Position");
     Player *self = m_session->GetPlayer();
 
     newOrientation = !std::isnan(newOrientation) ? newOrientation : self->GetOrientation();
@@ -69,7 +70,7 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
 
     float effectiveOrientation = GetEffectiveOrientation();
 
-    float orientationChange;
+    float orientationChange = 0;
     if (self->isTurning()) {
         orientationChange = (M_PI * 2) * (elapsedTime / turnSpeed);
         if (self->GetUnitMovementFlags() & MOVEMENTFLAG_LEFT) {
@@ -94,6 +95,7 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
         	deltaY = sinf(orientationChange / 2.0 + offset) * distance; ///TODO maybe make this negative
         }
         else {
+            TC_LOG_INFO("server", "Effective Orientation: %f, Elapsed Time: %d", effectiveOrientation, elapsedTime);
             deltaX = cosf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
             deltaY = sinf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
         }
@@ -113,6 +115,8 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
     float newY = self->GetPositionY() + deltaY;
     float newZ = self->GetMap()->GetHeight(newX, newY, self->GetPositionZ());
 
+    TC_LOG_INFO("server", "speed: %f, turnSpeed: %f, e-Orientation: %f, o-change: %f, dX: %f, dY: %f, newX: %f, newY: %f, newZ: %f",
+        moveSpeed, turnSpeed, effectiveOrientation, orientationChange, deltaX, deltaY, newX, newY, newZ);
     return new Position(newX, newY, newZ, newOrientation);
 }
 
@@ -440,6 +444,7 @@ bool PlayerBot::WalkToPoint(Position p)
     GetIntermediatePoint(p);
     m_pointWalkLock.lock();
     float distance = self->GetDistance(p);
+    TC_LOG_INFO("server", "Walk Distance: %f, X: %f, Y: %f", distance, self->GetPositionX(), self->GetPositionY());
     if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
         m_pointWalkLock.unlock();
         TC_LOG_INFO("server", "Exit walk to point 1");
@@ -456,6 +461,7 @@ bool PlayerBot::WalkToPoint(Position p)
     }
 
     m_targetPoint = new G3D::Vector3(p.GetPositionX(), p.GetPositionY(), p.GetPositionZ());
+    TC_LOG_INFO("server", "Walking to X: %f, Y: %f", p.GetPositionX(), p.GetPositionY());
     m_pointWalkLock.unlock();
     TC_LOG_INFO("server", "Exit walk to point 2");
     return true;
