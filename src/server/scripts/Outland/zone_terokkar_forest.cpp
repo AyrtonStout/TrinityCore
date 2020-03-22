@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,15 +18,13 @@
 /* ScriptData
 SDName: Terokkar_Forest
 SD%Complete: 85
-SDComment: Quest support: 9889, 10898, 10052, 10051.
+SDComment: Quest support: 9889, 10051, 10052.
 SDCategory: Terokkar Forest
 EndScriptData */
 
 /* ContentData
 npc_unkor_the_ruthless
 npc_isla_starmane
-npc_skywing
-npc_akuno
 EndContentData */
 
 #include "ScriptMgr.h"
@@ -93,8 +90,8 @@ public:
             me->SetFaction(FACTION_FRIENDLY);
             me->SetStandState(UNIT_STAND_STATE_SIT);
             me->RemoveAllAuras();
-            me->GetThreatManager().ClearAllThreat();
             me->CombatStop(true);
+            EngagementOver();
             UnkorUnfriendly_Timer = 60000;
         }
 
@@ -158,67 +155,6 @@ public:
             } else Pulverize_Timer -= diff;
 
             DoMeleeAttackIfReady();
-        }
-    };
-};
-
-/*######
-## npc_skywing
-######*/
-
-enum Skywing
-{
-    QUEST_SKYWING = 10898
-};
-
-class npc_skywing : public CreatureScript
-{
-public:
-    npc_skywing() : CreatureScript("npc_skywing") { }
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_skywingAI(creature);
-    }
-
-    struct npc_skywingAI : public EscortAI
-    {
-    public:
-        npc_skywingAI(Creature* creature) : EscortAI(creature) { }
-
-        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
-        {
-            Player* player = GetPlayerForEscort();
-            if (!player)
-                return;
-
-            switch (waypointId)
-            {
-                case 8:
-                    player->AreaExploredOrEventHappens(QUEST_SKYWING);
-                    break;
-            }
-        }
-
-        void JustEngagedWith(Unit* /*who*/) override { }
-
-        void MoveInLineOfSight(Unit* who) override
-
-        {
-            if (HasEscortState(STATE_ESCORT_ESCORTING))
-                return;
-
-            Player* player = who->ToPlayer();
-            if (player && player->GetQuestStatus(QUEST_SKYWING) == QUEST_STATUS_INCOMPLETE)
-                if (me->IsWithinDistInMap(who, 10.0f))
-                    Start(false, false, who->GetGUID());
-        }
-
-        void Reset() override { }
-
-        void UpdateAI(uint32 diff) override
-        {
-            EscortAI::UpdateAI(diff);
         }
     };
 };
@@ -323,5 +259,4 @@ void AddSC_terokkar_forest()
 {
     new npc_unkor_the_ruthless();
     new npc_isla_starmane();
-    new npc_skywing();
 }

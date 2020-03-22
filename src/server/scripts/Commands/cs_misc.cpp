@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,6 +33,7 @@
 #include "Language.h"
 #include "LFG.h"
 #include "Log.h"
+#include "MiscPackets.h"
 #include "MMapFactory.h"
 #include "MotionMaster.h"
 #include "MovementDefines.h"
@@ -453,7 +454,7 @@ public:
 
             // to point to see at target with same orientation
             float x, y, z;
-            target->GetContactPoint(_player, x, y, z);
+            target->GetClosePoint(x, y, z, _player->GetCombatReach(), 1.0f);
 
             _player->TeleportTo(target->GetMapId(), x, y, z, _player->GetAbsoluteAngle(target), TELE_TO_GM_MODE);
             _player->SetPhaseMask(target->GetPhaseMask(), true);
@@ -1262,8 +1263,27 @@ public:
         // Subtract
         if (count < 0)
         {
-            playerTarget->DestroyItemCount(itemId, -count, true, false);
-            handler->PSendSysMessage(LANG_REMOVEITEM, itemId, -count, handler->GetNameLink(playerTarget).c_str());
+            uint32 destroyedItemCount = playerTarget->DestroyItemCount(itemId, -count, true, false);
+            
+            if (destroyedItemCount > 0)
+            {
+                // output the amount of items successfully destroyed
+                handler->PSendSysMessage(LANG_REMOVEITEM, itemId, destroyedItemCount, handler->GetNameLink(playerTarget).c_str());
+
+                // check to see if we were unable to destroy all of the amount requested.
+                uint32 unableToDestroyItemCount = -count - destroyedItemCount;
+                if (unableToDestroyItemCount > 0)
+                {
+                    // output message for the amount of items we couldn't destroy
+                    handler->PSendSysMessage(LANG_REMOVEITEM_FAILURE, itemId, unableToDestroyItemCount, handler->GetNameLink(playerTarget).c_str());
+                }
+            }
+            else
+            {
+                // failed to destroy items of the amount requested
+                handler->PSendSysMessage(LANG_REMOVEITEM_FAILURE, itemId, -count, handler->GetNameLink(playerTarget).c_str());
+            }
+
             return true;
         }
 
@@ -1401,10 +1421,7 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         uint32 zoneid = player->GetZoneId();
 
-        Weather* weather = WeatherMgr::FindWeather(zoneid);
-
-        if (!weather)
-            weather = WeatherMgr::AddWeather(zoneid);
+        Weather* weather = player->GetMap()->GetOrGenerateZoneDefaultWeather(zoneid);
         if (!weather)
         {
             handler->SendSysMessage(LANG_NO_WEATHER);
@@ -1601,8 +1618,8 @@ public:
         uint32 mapId;
         uint32 areaId;
         uint32 phase            = 0;
-        std::string areaName    = handler->GetTrinityString(LANG_UNKNOWN);
-        std::string zoneName    = handler->GetTrinityString(LANG_UNKNOWN);
+        char const* areaName    = nullptr;
+        char const* zoneName    = nullptr;
 
         // Guild data print variables defined so that they exist, but are not necessarily used
         uint32 guildId           = 0;
@@ -1623,15 +1640,15 @@ public:
             accId             = target->GetSession()->GetAccountId();
             money             = target->GetMoney();
             totalPlayerTime   = target->GetTotalPlayedTime();
-            level             = target->getLevel();
+            level             = target->GetLevel();
             latency           = target->GetSession()->GetLatency();
-            raceid            = target->getRace();
-            classid           = target->getClass();
+            raceid            = target->GetRace();
+            classid           = target->GetClass();
             muteTime          = target->GetSession()->m_muteTime;
             mapId             = target->GetMapId();
             areaId            = target->GetAreaId();
             alive             = target->IsAlive() ? handler->GetTrinityString(LANG_YES) : handler->GetTrinityString(LANG_NO);
-            gender            = target->getGender();
+            gender            = target->GetNativeGender();
             phase             = target->GetPhaseMask();
         }
         // get additional information from DB
@@ -1777,11 +1794,11 @@ public:
 
         // Output III. LANG_PINFO_BANNED if ban exists and is applied
         if (banTime >= 0)
-            handler->PSendSysMessage(LANG_PINFO_BANNED, banType.c_str(), banReason.c_str(), banTime > 0 ? secsToTimeString(banTime - GameTime::GetGameTime(), true).c_str() : handler->GetTrinityString(LANG_PERMANENTLY), bannedBy.c_str());
+            handler->PSendSysMessage(LANG_PINFO_BANNED, banType.c_str(), banReason.c_str(), banTime > 0 ? secsToTimeString(banTime - GameTime::GetGameTime(), TimeFormat::ShortText).c_str() : handler->GetTrinityString(LANG_PERMANENTLY), bannedBy.c_str());
 
         // Output IV. LANG_PINFO_MUTED if mute is applied
         if (muteTime > 0)
-            handler->PSendSysMessage(LANG_PINFO_MUTED, muteReason.c_str(), secsToTimeString(muteTime - GameTime::GetGameTime(), true).c_str(), muteBy.c_str());
+            handler->PSendSysMessage(LANG_PINFO_MUTED, muteReason.c_str(), secsToTimeString(muteTime - GameTime::GetGameTime(), TimeFormat::ShortText).c_str(), muteBy.c_str());
 
         // Output V. LANG_PINFO_ACC_ACCOUNT
         handler->PSendSysMessage(LANG_PINFO_ACC_ACCOUNT, userName.c_str(), accId, security);
@@ -1827,17 +1844,23 @@ public:
         AreaTableEntry const* area = sAreaTableStore.LookupEntry(areaId);
         if (area)
         {
-            areaName = area->area_name[locale];
+            zoneName = area->area_name[locale];
 
             AreaTableEntry const* zone = sAreaTableStore.LookupEntry(area->zone);
             if (zone)
+            {
+                areaName = zoneName;
                 zoneName = zone->area_name[locale];
+            }
         }
 
-        if (target)
-            handler->PSendSysMessage(LANG_PINFO_CHR_MAP, map->name[locale],
-                (!zoneName.empty() ? zoneName.c_str() : handler->GetTrinityString(LANG_UNKNOWN)),
-                (!areaName.empty() ? areaName.c_str() : handler->GetTrinityString(LANG_UNKNOWN)));
+        if (!zoneName)
+            zoneName = handler->GetTrinityString(LANG_UNKNOWN);
+
+        if (areaName)
+            handler->PSendSysMessage(LANG_PINFO_CHR_MAP_WITH_AREA, map->name[locale], zoneName, areaName);
+        else
+            handler->PSendSysMessage(LANG_PINFO_CHR_MAP, map->name[locale], zoneName);
 
         // Output XVII. - XVIX. if they are not empty
         if (!guildName.empty())
@@ -1851,7 +1874,7 @@ public:
         }
 
         // Output XX. LANG_PINFO_CHR_PLAYEDTIME
-        handler->PSendSysMessage(LANG_PINFO_CHR_PLAYEDTIME, (secsToTimeString(totalPlayerTime, true, true)).c_str());
+        handler->PSendSysMessage(LANG_PINFO_CHR_PLAYEDTIME, (secsToTimeString(totalPlayerTime, TimeFormat::ShortText, true)).c_str());
 
         // Mail Data - an own query, because it may or may not be useful.
         // SQL: "SELECT SUM(CASE WHEN (checked & 1) THEN 1 ELSE 0 END) AS 'readmail', COUNT(*) AS 'totalmail' FROM mail WHERE `receiver` = ?"
@@ -1899,13 +1922,13 @@ public:
 
         // Now handle any that had despawned, but had respawn time logged.
         std::vector<RespawnInfo*> data;
-        player->GetMap()->GetRespawnInfo(data, SPAWN_TYPEMASK_ALL, 0);
+        player->GetMap()->GetRespawnInfo(data, SPAWN_TYPEMASK_ALL);
         if (!data.empty())
         {
             uint32 const gridId = Trinity::ComputeGridCoord(player->GetPositionX(), player->GetPositionY()).GetId();
             for (RespawnInfo* info : data)
                 if (info->gridId == gridId)
-                    player->GetMap()->ForceRespawn(info->type, info->spawnId);
+                    player->GetMap()->Respawn(info->type, info->spawnId);
         }
 
         return true;
@@ -2013,7 +2036,7 @@ public:
 
         if (target)
         {
-            if (target->CanSpeak())
+            if (target->GetSession()->CanSpeak())
             {
                 handler->SendSysMessage(LANG_CHAT_ALREADY_ENABLED);
                 handler->SetSentErrorMessage(true);
@@ -2121,8 +2144,8 @@ public:
         float x, y, z;
         unit->GetMotionMaster()->GetDestination(x, y, z);
 
-        std::vector<MovementGeneratorInformation> list = unit->GetMotionMaster()->GetMovementGeneratorsInformation();
-        for (MovementGeneratorInformation info : list)
+        std::vector<MovementGeneratorInformation> const list = unit->GetMotionMaster()->GetMovementGeneratorsInformation();
+        for (MovementGeneratorInformation const& info : list)
         {
             switch (info.Type)
             {
@@ -2280,11 +2303,7 @@ public:
         if (!target->IsAlive())
             return true;
 
-        char* damageStr = strtok((char*)args, " ");
-        if (!damageStr)
-            return false;
-
-        int32 damage_int = atoi((char*)damageStr);
+        int32 damage_int = atoi((char*)str);
         if (damage_int <= 0)
             return true;
 
@@ -2612,9 +2631,7 @@ public:
             return false;
         }
 
-        WorldPacket data(SMSG_PLAY_SOUND, 4);
-        data << uint32(soundId);
-        sWorld->SendGlobalMessage(&data);
+        sWorld->SendGlobalMessage(WorldPackets::Misc::PlaySound(soundId).Write());
 
         handler->PSendSysMessage(LANG_COMMAND_PLAYED_TO_ALL, soundId);
         return true;
