@@ -1,4 +1,5 @@
 #include "PlayerBot.h"
+#include <Server\Packets\CombatPackets.h>
 
 PlayerBot::PlayerBot(uint64 playerGuid, uint32 accountId) : m_playerGuid(playerGuid), m_accountId(accountId)
 {
@@ -278,16 +279,20 @@ void PlayerBot::StartAttack()
     if (target) {
         SetWeaponSheath(SHEATH_STATE_MELEE);
 
-        WorldPacket *packet = new WorldPacket();
-        *packet << target->GetGUID();
-        m_session->HandleAttackSwingOpcode(*packet);
+        WorldPacket packet = WorldPacket();
+        packet << target->GetGUID();
+
+        auto swingPacket = WorldPackets::Combat::AttackSwing(std::move(packet));
+        m_session->HandleAttackSwingOpcode(swingPacket);
     }
 }
 
 void PlayerBot::StopAttack()
 {
-    WorldPacket *packet = new WorldPacket();
-    m_session->HandleAttackStopOpcode(*packet);
+    WorldPacket packet = WorldPacket();
+
+    auto swingPacket = WorldPackets::Combat::AttackStop(std::move(packet));
+    m_session->HandleAttackStopOpcode(swingPacket);
 }
 
 void PlayerBot::SetWeaponSheath(SheathState state)

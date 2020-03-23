@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -164,12 +163,12 @@ class TC_GAME_API Aura
         bool ModStackAmount(int32 num, AuraRemoveMode removeMode = AURA_REMOVE_BY_DEFAULT, bool resetPeriodicTimer = true);
 
         bool  CanApplyResilience() const { return _casterInfo.ApplyResilience; }
-        void  SetCanApplyResilience(bool val) { _casterInfo.ApplyResilience = val; }
+        void SetCanApplyResilience(bool val) { _casterInfo.ApplyResilience = val; }
         uint8 GetCasterLevel() const { return _casterInfo.Level; }
         float GetCritChance() const { return _casterInfo.CritChance; }
-        void  SetCritChance(float val) { _casterInfo.CritChance = val; }
+        void SetCritChance(float val) { _casterInfo.CritChance = val; }
         float GetDonePct() const { return _casterInfo.BonusDonePct; }
-        void  SetDonePct(float val) { _casterInfo.BonusDonePct = val; }
+        void SetDonePct(float val) { _casterInfo.BonusDonePct = val; }
 
         bool HasMoreThanOneEffectForType(AuraType auraType) const;
         bool IsArea() const;
@@ -216,6 +215,7 @@ class TC_GAME_API Aura
 
         bool IsProcOnCooldown(std::chrono::steady_clock::time_point now) const;
         void AddProcCooldown(std::chrono::steady_clock::time_point cooldownEnd);
+        void ResetProcCooldown();
         bool IsUsingCharges() const { return m_isUsingCharges; }
         void SetUsingCharges(bool val) { m_isUsingCharges = val; }
         void PrepareProcToTrigger(AuraApplication* aurApp, ProcEventInfo& eventInfo, std::chrono::steady_clock::time_point now);
@@ -264,6 +264,8 @@ class TC_GAME_API Aura
         }
 
         std::vector<AuraScript*> m_loadedScripts;
+
+        virtual std::string GetDebugInfo() const;
 
     private:
         AuraScript* GetScriptByName(std::string const& scriptName) const;
