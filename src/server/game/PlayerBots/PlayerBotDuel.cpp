@@ -23,8 +23,11 @@ void PlayerBot::HandleDuelRequest(uint64 challengerGuid)
 void PlayerBot::AcceptDuel()
 {
     TC_LOG_INFO("server", "Bot is attempting to accept duel");
+    Player* target = m_session->GetPlayer()->duel->Opponent;
+
     WorldPacket *packet = new WorldPacket();
-    *packet << uint64(0); //The duel handler expects to find a GUID in it but doesn't actually use it
+    *packet << target->GetGuidValue(PLAYER_DUEL_ARBITER);
+
     m_session->HandleDuelAcceptedOpcode(*packet);
 }
 
