@@ -60,7 +60,7 @@ void PlayerBotManager::BotUpdateThread()
 
 PlayerBot *PlayerBotManager::GetOfflineBot()
 {
-    std::string query = "SELECT character_id, account_id "
+    std::string query = "SELECT character_id, account "
                         "FROM character_bots cb "
                         "LEFT JOIN characters c "
                         "ON cb.character_id = c.guid "
