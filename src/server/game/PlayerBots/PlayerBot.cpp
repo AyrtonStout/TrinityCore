@@ -279,17 +279,19 @@ void PlayerBot::StartAttack()
     if (target) {
         SetWeaponSheath(SHEATH_STATE_MELEE);
 
-        WorldPacket packet = WorldPacket();
+        WorldPacket packet = WorldPacket(CMSG_ATTACK_SWING);
         packet << target->GetGUID();
 
         auto swingPacket = WorldPackets::Combat::AttackSwing(std::move(packet));
+        swingPacket.Read();
+
         m_session->HandleAttackSwingOpcode(swingPacket);
     }
 }
 
 void PlayerBot::StopAttack()
 {
-    WorldPacket packet = WorldPacket();
+    WorldPacket packet = WorldPacket(CMSG_ATTACK_STOP);
 
     auto swingPacket = WorldPackets::Combat::AttackStop(std::move(packet));
     m_session->HandleAttackStopOpcode(swingPacket);
