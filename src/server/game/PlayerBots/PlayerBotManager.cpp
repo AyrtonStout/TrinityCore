@@ -110,8 +110,11 @@ void PlayerBotManager::HandleChatPacket(WorldPacket *packet, uint64 botGuid)
     }
 
     PlayerBot *bot = m_botMap[botGuid];
-    if (!bot)
+    if (!bot) {
+        TC_LOG_WARN("system", "A chat packet was intended for a bot that doesn't exist! Bot ID: %u", botGuid);
+
         return;
+    }
 
     bot->HandleChat((ChatMsg) chatType, (Language) language, senderGuid, receiverGuid, message, achievementId);
 }
@@ -127,8 +130,11 @@ void PlayerBotManager::HandleDuelRequest(WorldPacket *packet, uint64 botGuid)
     }
 
     PlayerBot *bot = m_botMap[botGuid];
-    if (!bot)
+    if (!bot) {
+        TC_LOG_WARN("system", "A duel packet was intended for a bot that doesn't exist! Bot ID: %u", botGuid);
+
         return;
+    }
 
     //The duel packet is sent before the bots are flagged as being in a duel. Wait for the flag to be set.
     for (uint8 i = 0; i < 100; i++) {
@@ -149,8 +155,11 @@ void PlayerBotManager::HandlePartyRequest(WorldPacket *packet, uint64 botGuid)
     *packet >> inviter;
 
     PlayerBot *bot = m_botMap[botGuid];
-    if (!bot)
+    if (!bot) {
+        TC_LOG_WARN("system", "A party packet was intended for a bot that doesn't exist! Bot ID: %u", botGuid);
+
         return;
+    }
 
     srand(time(NULL));
     uint8 accept = rand() % 2;
