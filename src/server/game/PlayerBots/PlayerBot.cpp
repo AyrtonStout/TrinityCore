@@ -36,6 +36,25 @@ void PlayerBot::Update()
 {
     Player *self = m_session->GetPlayer();
 
+    if (IsDuelInProgress()) {
+        auto opponent = self->duel->Opponent;
+        auto target = self->GetSelectedUnit();
+
+        m_followingPlayer = opponent;
+
+        // Check if the enemy is in our front 120 degrees. If they aren't, we need to face them
+        if (!self->HasInArc(2 * float(M_PI) / 3, opponent)) {
+            FaceUnit(opponent);
+        }
+
+        if (target && target->GetGUID() != opponent->GetGUID()) {
+            TargetPlayer(opponent);
+        }
+        if (!self->HasUnitState(UNIT_STATE_MELEE_ATTACKING)) {
+            AttackUnit(opponent);
+        }
+    }
+
     if (self->isMoving()) {
         SendMovementHeartbeat();
     }
@@ -81,11 +100,10 @@ void PlayerBot::TargetNearestPlayer()
     m_session->HandleSetSelectionOpcode(*packet);
 }
 
-void PlayerBot::TargetPlayerByName(std::string name)
+void PlayerBot::TargetPlayer(Player *player)
 {
-    WorldPacket *packet = new WorldPacket();
+    WorldPacket* packet = new WorldPacket();
 
-    Player* player = ObjectAccessor::FindPlayerByName(name);
     if (!player) {
         uint64 noTarget = 0;
         *packet << noTarget;
@@ -95,6 +113,12 @@ void PlayerBot::TargetPlayerByName(std::string name)
     }
 
     m_session->HandleSetSelectionOpcode(*packet);
+}
+
+void PlayerBot::TargetPlayerByName(std::string name)
+{
+    Player* player = ObjectAccessor::FindPlayerByName(name);
+    TargetPlayer(player);
 }
 
 void PlayerBot::TargetSelf()
@@ -273,20 +297,27 @@ void PlayerBot::CastSpell(PlayerBotSpell spell)
     m_session->HandleCastSpellOpcode(*packet);
 }
 
+void PlayerBot::AttackUnit(Unit* unit)
+{
+    if (!unit) {
+        return;
+    }
+
+    SetWeaponSheath(SHEATH_STATE_MELEE);
+
+    WorldPacket packet = WorldPacket(CMSG_ATTACK_SWING);
+    packet << unit->GetGUID();
+
+    auto swingPacket = WorldPackets::Combat::AttackSwing(std::move(packet));
+    swingPacket.Read();
+
+    m_session->HandleAttackSwingOpcode(swingPacket);
+}
+
 void PlayerBot::StartAttack()
 {
     Unit *target = m_session->GetPlayer()->GetSelectedUnit();
-    if (target) {
-        SetWeaponSheath(SHEATH_STATE_MELEE);
-
-        WorldPacket packet = WorldPacket(CMSG_ATTACK_SWING);
-        packet << target->GetGUID();
-
-        auto swingPacket = WorldPackets::Combat::AttackSwing(std::move(packet));
-        swingPacket.Read();
-
-        m_session->HandleAttackSwingOpcode(swingPacket);
-    }
+    AttackUnit(target);
 }
 
 void PlayerBot::StopAttack()

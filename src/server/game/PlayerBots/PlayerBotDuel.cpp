@@ -43,3 +43,12 @@ bool PlayerBot::IsDueling()
     return m_session->GetPlayer()->duel != NULL;
 }
 
+bool PlayerBot::IsDuelInProgress()
+{
+    if (!IsDueling()) {
+        return false;
+    }
+
+    return m_session->GetPlayer()->duel->State == DUEL_STATE_IN_PROGRESS;
+}
+

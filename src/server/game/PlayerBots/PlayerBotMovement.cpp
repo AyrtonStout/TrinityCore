@@ -1,6 +1,7 @@
 #include "PlayerBot.h"
 
 constexpr float MIN_FOLLOW_DISTANCE = 1.3f;
+constexpr float MIN_ATTACK_DISTANCE = 0.6f;
 
 ///TODO This needs to be expanded to include swimming and flying movement types
 float PlayerBot::GetSpeed()
@@ -115,6 +116,11 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
     float newY = self->GetPositionY() + deltaY;
 
     auto map = self->GetMap();
+
+    // GetHeight() doesn't like it if you have a Z height that is below the current map's minimum height. So use our existing Z
+    // if we have it, but use the minimum grid height if it's higher. This works for most cases, but doesn't seem to work properly
+    // if you go indoors, or need to use the height of objects. For example, the blacksmith in goldshire has stairs that go up
+    // off of the ground, and the bot ignores these stairs and just walks through the blacksmith
     float currentZ = std::max(self->GetPositionZ(), map->GetGridHeight(newX, newY));
     float newZ = map->GetHeight(newX, newY, currentZ);
 
@@ -134,18 +140,23 @@ void PlayerBot::BuildMovementPacket(WorldPacket *packet, uint32 movementFlags, f
     *packet << (uint32) 0; // Fall Time
 }
 
+void PlayerBot::FaceUnit(Unit *unit)
+{
+    if (!unit)
+        return;
+
+    Player* self = m_session->GetPlayer();
+
+    if (unit->GetGUID() == self->GetGUID())
+        return;
+
+    FacePosition(unit->GetPosition());
+}
+
 void PlayerBot::FaceTarget()
 {
     Unit *target = m_session->GetPlayer()->GetSelectedUnit();
-    if (!target)
-        return;
-
-    Player *self = m_session->GetPlayer();
-
-    if (target->GetGUID() == self->GetGUID())
-        return;
-
-    FacePosition(target->GetPosition());
+    FaceUnit(target);
 }
 
 void PlayerBot::FacePosition(Position p)
@@ -384,7 +395,7 @@ void PlayerBot::UpdateFollowingPlayer()
         return;
     }
     m_pointWalkLock.unlock();
-    if (distance > MIN_FOLLOW_DISTANCE) {
+    if (distance > GetMinFollowDistance()) {
         Position *offsetPosition = GetIntermediatePoint(m_followingPlayer->GetPosition());
         WalkToPoint(*offsetPosition);
         delete offsetPosition;
@@ -424,7 +435,7 @@ bool PlayerBot::UpdatePointWalk()
 
     float distance = self->GetDistance(m_targetPoint->x, m_targetPoint->y, m_targetPoint->z);
 
-    if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
+    if (distance < GetMinFollowDistance() || distance > self->GetVisibilityRange()) {
         delete m_targetPoint;
         m_targetPoint = NULL;
         m_pointWalkLock.unlock();
@@ -432,6 +443,11 @@ bool PlayerBot::UpdatePointWalk()
     }
     m_pointWalkLock.unlock();
     return false;
+}
+
+float PlayerBot::GetMinFollowDistance()
+{
+    return IsDuelInProgress() ? MIN_ATTACK_DISTANCE : MIN_FOLLOW_DISTANCE;
 }
 
 bool PlayerBot::WalkToPoint(float x, float y, float z)
@@ -448,7 +464,7 @@ bool PlayerBot::WalkToPoint(Position p)
     m_pointWalkLock.lock();
     float distance = self->GetDistance(p);
     TC_LOG_INFO("server", "Walk Distance: %f, X: %f, Y: %f", distance, self->GetPositionX(), self->GetPositionY());
-    if (distance < MIN_FOLLOW_DISTANCE || distance > self->GetVisibilityRange()) {
+    if (distance < GetMinFollowDistance() || distance > self->GetVisibilityRange()) {
         m_pointWalkLock.unlock();
         TC_LOG_INFO("server", "Exit walk to point 1");
         return false;

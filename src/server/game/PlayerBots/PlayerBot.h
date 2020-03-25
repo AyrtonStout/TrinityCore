@@ -32,8 +32,10 @@ public:
 
     void TargetNearestPlayer();
     void TargetPlayerByName(std::string name);
+    void TargetPlayer(Player *player);
     void TargetSelf();
 
+    void FaceUnit(Unit *unit);
     void FaceTarget();
     void FacePosition(Position p);
 
@@ -42,7 +44,9 @@ public:
     void RejectDuel();
     void HandleDuelRequest(uint64 challengerGuid);
     bool IsDueling();
+    bool IsDuelInProgress();
 
+    void AttackUnit(Unit* unit);
     void StartAttack();
     void StopAttack();
     void SetWeaponSheath(SheathState state);
@@ -101,6 +105,7 @@ private:
     std::mutex m_pointWalkLock;
 
     float GetSpeed();
+    float GetMinFollowDistance();
     float GetEffectiveOrientation();
     Position* CalculatePosition(float newOrientation = NAN);
     void BuildMovementPacket(WorldPacket* packet, uint32 MovementFlags, float orientation = NAN);
