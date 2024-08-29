@@ -65,7 +65,7 @@ public:
 
     struct instance_blackfathom_deeps_InstanceMapScript : public InstanceScript
     {
-        instance_blackfathom_deeps_InstanceMapScript(Map* map) : InstanceScript(map)
+        instance_blackfathom_deeps_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
         {
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
@@ -106,12 +106,12 @@ public:
                 case GO_SHRINE_OF_GELIHAST:
                     shrineOfGelihastGUID = go->GetGUID();
                     if (GetBossState(DATA_GELIHAST) != DONE)
-                        go->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        go->SetFlag(GO_FLAG_NOT_SELECTABLE);
                     break;
                 case GO_ALTAR_OF_THE_DEEPS:
                     altarOfTheDeepsGUID = go->GetGUID();
                     if (GetBossState(DATA_AKU_MAI) != DONE)
-                        go->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        go->SetFlag(GO_FLAG_NOT_SELECTABLE);
                     break;
                 case GO_AKU_MAI_DOOR:
                     if (GetBossState(DATA_AKU_MAI) == DONE)
@@ -132,42 +132,42 @@ public:
                         case 1:
                             if (GameObject* go = instance->GetGameObject(shrine1GUID))
                             {
-                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[2], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[5], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[7], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
+                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[2], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[5], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_AKU_MAI_SNAPJAW, SpawnsLocation[7], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
                             }
                             break;
                         case 2:
                             if (GameObject* go = instance->GetGameObject(shrine1GUID))
                             {
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[1], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[2], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[4], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[5], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[6], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[7], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[8], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[9], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[1], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[2], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[4], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[5], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[6], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[7], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[8], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_MURKSHALLOW_SOFTSHELL, SpawnsLocation[9], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
                             }
                             break;
                         case 3:
                             if (GameObject* go = instance->GetGameObject(shrine1GUID))
                             {
-                                go->SummonCreature(NPC_AKU_MAI_SERVANT, SpawnsLocation[1], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_AKU_MAI_SERVANT, SpawnsLocation[6], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
+                                go->SummonCreature(NPC_AKU_MAI_SERVANT, SpawnsLocation[1], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_AKU_MAI_SERVANT, SpawnsLocation[6], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
                             }
                             break;
                         case 4:
                             if (GameObject* go = instance->GetGameObject(shrine1GUID))
                             {
-                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[2], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[5], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[7], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
-							}
+                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[2], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[5], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                                go->SummonCreature(NPC_BARBED_CRUSTACEAN, SpawnsLocation[7], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
+                            }
                             break;
                     }
                     break;
@@ -189,14 +189,14 @@ public:
                 case DATA_GELIHAST:
                     if (state == DONE)
                         if (GameObject* go = instance->GetGameObject(shrineOfGelihastGUID))
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                     break;
                 case DATA_AKU_MAI:
                     if (state == DONE)
                         if (GameObject* go = instance->GetGameObject(altarOfTheDeepsGUID))
                         {
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
-                            go->SummonCreature(NPC_MORRIDUNE, SpawnsLocation[10], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000);
+                            go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                            go->SummonCreature(NPC_MORRIDUNE, SpawnsLocation[10], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
                         }
                     break;
                 default:
