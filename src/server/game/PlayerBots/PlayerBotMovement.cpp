@@ -480,7 +480,7 @@ bool PlayerBot::WalkToPoint(Position p)
     }
 
     m_targetPoint = new G3D::Vector3(p.GetPositionX(), p.GetPositionY(), p.GetPositionZ());
-    TC_LOG_INFO("server", "Walking to X: %f, Y: %f", p.GetPositionX(), p.GetPositionY());
+    TC_LOG_INFO("server", "Walking to X: {}, Y: {}", p.GetPositionX(), p.GetPositionY());
     m_pointWalkLock.unlock();
     TC_LOG_INFO("server", "Exit walk to point 2");
     return true;
@@ -610,7 +610,8 @@ void PlayerBot::GeneratePath(float x, float y, float z)
     }
 }
 
-// FIXME This function does teleport the unit, and thus is still useful. But this breaks the bot after it teleports and the server must be restarted
+// FIXME This function does teleport the unit, and thus is still useful. But this breaks the bot after it teleports and the server must be restarted.
+// It looks like we need to acknowledge the teleport with a packet or else "plrMover->IsBeingTeleported()" stays true and further movement is ignored.
 void PlayerBot::TeleportToUnit(const Unit *unit)
 {
     TC_LOG_INFO("server", "Initiating teleport");
@@ -624,4 +625,12 @@ void PlayerBot::TeleportToUnit(const Unit *unit)
     //TC_LOG_INFO("server", "Acking world port");
     //m_session->HandleMoveWorldportAckOpcode(*packet);
     //TC_LOG_INFO("server", "Acking world port done");
+}
+
+// I am not 100% sure what this does tbh. But there is a check in the code that prevents movement unless this has been sent.
+void PlayerBot::SendActiveMoverPacket()
+{
+    auto packet = WorldPacket(CMSG_SET_ACTIVE_MOVER);
+    packet << m_session->GetPlayer()->GetGUID();
+    m_session->HandleSetActiveMoverOpcode(packet);
 }

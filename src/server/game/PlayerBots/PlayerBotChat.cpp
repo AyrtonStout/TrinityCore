@@ -61,9 +61,11 @@ std::string PlayerBot::GetCurrentZoneName()
     if (AreaTableEntry const* area = sAreaTableStore.LookupEntry(areaId))
     {
         int locale = m_session->GetSessionDbcLocale();
-        std::string areaName = area->area_name[locale];
-        if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(area->zone))
-            zoneName = zone->area_name[locale];
+        std::string areaName = area->AreaName[locale];
+
+        // TODO this might not work! This area->ID code is untested as what I was doing before was no longer possible.
+        if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(area->ID))
+            zoneName = zone->AreaName[locale];
     }
     
     return zoneName;

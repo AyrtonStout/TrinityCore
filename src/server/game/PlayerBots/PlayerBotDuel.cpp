@@ -12,6 +12,8 @@ void PlayerBot::RequestDuel()
     *packet << (uint8) 0; //Cast Flags
     *packet << (uint32) TARGET_FLAG_UNIT; //Target Mask (This says that this spell has a target)
     *packet << (uint64) target->GetGUID(); //Target GUID
+
+    TC_LOG_INFO("server", "Attempting to send duel packet for processing");
     m_session->HandleCastSpellOpcode(*packet);
 }
 

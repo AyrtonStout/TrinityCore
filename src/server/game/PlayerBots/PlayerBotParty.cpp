@@ -1,4 +1,5 @@
 #include "PlayerBot.h"
+#include "PartyPackets.h"
 
 void PlayerBot::InviteToParty()
 {
@@ -13,10 +14,10 @@ void PlayerBot::InviteToParty()
 
 void PlayerBot::InviteToParty(std::string playerName) 
 {
-    WorldPacket *packet = new WorldPacket();
-    *packet << playerName;
-    *packet << (uint32) 0; //Useless but needed for the packet parser in the handler
-    m_session->HandleGroupInviteOpcode(*packet);
+    auto packet = WorldPackets::Party::PartyInviteClient(WorldPacket(CMSG_GROUP_INVITE));
+    packet.TargetName = playerName;
+
+    m_session->HandleGroupInviteOpcode(packet);
 }
 
 void PlayerBot::AcceptPartyInvite()
@@ -28,6 +29,7 @@ void PlayerBot::AcceptPartyInvite()
 
 void PlayerBot::DeclinePartyInvite()
 {
+    // FIXME this is a memory leak, no?
     m_session->HandleGroupDeclineOpcode(*(new WorldPacket()));
 }
 

@@ -67,6 +67,7 @@ public:
     void StopAllWalking();
 
     void TeleportToUnit(const Unit *unit);
+    void SendActiveMoverPacket();
 
     void FollowPlayer(uint64 playerGuid);
     void StopFollowingPlayer();

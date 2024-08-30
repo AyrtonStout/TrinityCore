@@ -12,7 +12,7 @@ PlayerBot::PlayerBot(uint64 playerGuid, uint32 accountId) : m_playerGuid(playerG
     bool isARecruiter = false;
     bool isPlayerBot = true; //I sure hope so!
 
-    m_session = new WorldSession(accountId, accountName.c_str(), NULL, accountType, expansion, muteTime, locale, recruiter, isARecruiter, isPlayerBot);
+    m_session = new WorldSession(accountId, accountName.c_str(), NULL, accountType, expansion, muteTime, Minutes(0), locale, recruiter, isARecruiter, isPlayerBot);
     sWorld->AddSession(m_session);
 }
 
@@ -334,9 +334,10 @@ void PlayerBot::SetWeaponSheath(SheathState state)
     if (currentState == state)
         return;
 
-    WorldPacket *packet = new WorldPacket();
-    *packet << (uint32) state;
-    m_session->HandleSetSheathedOpcode(*packet);
+    auto packet = WorldPackets::Combat::SetSheathed(WorldPacket(CMSG_SET_SHEATHED));
+    packet.CurrentSheathState = state;
+
+    m_session->HandleSetSheathedOpcode(packet);
 }
 
 /* This may be a better way to do it (mostly copied from Creature.cpp), but this has a linker error for some reason
