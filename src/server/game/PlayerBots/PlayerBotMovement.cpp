@@ -96,7 +96,7 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
         	deltaY = sinf(orientationChange / 2.0 + offset) * distance; ///TODO maybe make this negative
         }
         else {
-            TC_LOG_INFO("server", "Effective Orientation: %f, Elapsed Time: %d", effectiveOrientation, elapsedTime);
+            TC_LOG_INFO("server", "Effective Orientation: {}, Elapsed Time: {}", effectiveOrientation, elapsedTime);
             deltaX = cosf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
             deltaY = sinf(effectiveOrientation) * moveSpeed * (elapsedTime / 1000.0);
         }
@@ -610,18 +610,25 @@ void PlayerBot::GeneratePath(float x, float y, float z)
     }
 }
 
-// FIXME This function does teleport the unit, and thus is still useful. But this breaks the bot after it teleports and the server must be restarted.
-// It looks like we need to acknowledge the teleport with a packet or else "plrMover->IsBeingTeleported()" stays true and further movement is ignored.
 void PlayerBot::TeleportToUnit(const Unit *unit)
 {
     TC_LOG_INFO("server", "Initiating teleport");
     Player *self = m_session->GetPlayer();
     self->TeleportTo(unit->GetMapId(), unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetOrientation(), 0);
-    TC_LOG_INFO("server", "Finished teleport");
 
-    /// This stuff may possibly help in making this not break. Unsure
-    //WorldPacket *packet = new WorldPacket();
-    //packet->SetOpcode(MSG_MOVE_WORLDPORT_ACK);
+    // After you teleport, you have to send a packet to acknowledge the teleport has finished or else it continually thinks you are
+    // in a state of teleportation and will ignore all future movement requests.
+    auto packet = WorldPacket(MSG_MOVE_TELEPORT_ACK);
+    packet << self->GetGUID().WriteAsPacked();
+    packet << uint32(0); // Sequence Index? Unused
+    packet << uint32(0); // Time? Unused
+
+    m_session->HandleMoveTeleportAck(packet);
+
+    // I have confirmed that short range teleports work, but there are "short" and "far" teleport code paths I have seen and it is
+    // possible that this command does not work over long distances. I wrote this code a long time ago and maybe it will be helpful
+    // for long range teleports. However, if you test long range TPs and they work, then just delete this crap and comment.
+    //auto packet = WorldPacket(MSG_MOVE_WORLDPORT_ACK);
     //TC_LOG_INFO("server", "Acking world port");
     //m_session->HandleMoveWorldportAckOpcode(*packet);
     //TC_LOG_INFO("server", "Acking world port done");
