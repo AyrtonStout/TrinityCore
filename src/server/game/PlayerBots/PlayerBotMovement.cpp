@@ -129,15 +129,15 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
     return new Position(newX, newY, newZ, newOrientation);
 }
 
-void PlayerBot::BuildMovementPacket(WorldPacket *packet, uint32 movementFlags, float orientation /* NAN */)
+void PlayerBot::BuildMovementPacket(WorldPacket &packet, uint32 movementFlags, float orientation /* NAN */)
 {
     Player *self = m_session->GetPlayer();
-    *packet << self->GetGUID().WriteAsPacked();
-    *packet << (uint32) movementFlags; //Flags1
-    *packet << (uint16) self->GetExtraUnitMovementFlags(); //Flags2
-    *packet << (uint32) getMSTime(); //Time
-    *packet << CalculatePosition(orientation)->PositionXYZOStream();
-    *packet << (uint32) 0; // Fall Time
+    packet << self->GetGUID().WriteAsPacked();
+    packet << (uint32) movementFlags; //Flags1
+    packet << (uint16) self->GetExtraUnitMovementFlags(); //Flags2
+    packet << (uint32) getMSTime(); //Time
+    packet << CalculatePosition(orientation)->PositionXYZOStream();
+    packet << (uint32) 0; // Fall Time
 }
 
 void PlayerBot::FaceUnit(Unit *unit)
@@ -165,13 +165,12 @@ void PlayerBot::FacePosition(Position p)
 
     float angle = self->GetAbsoluteAngle(p);
 
-    WorldPacket *packet = new WorldPacket();
-    packet->SetOpcode(MSG_MOVE_SET_FACING);
+    auto packet = WorldPacket(MSG_MOVE_SET_FACING);
 
     BuildMovementPacket(packet, self->GetUnitMovementFlags(), angle);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::RPWalk(bool rpWalk)
@@ -179,26 +178,25 @@ void PlayerBot::RPWalk(bool rpWalk)
     Player *self = m_session->GetPlayer();
 
     uint32 movementFlags;
-    WorldPacket *packet = new WorldPacket(); 
+    auto packet = WorldPacket(); 
     if (rpWalk) {
-        packet->SetOpcode(MSG_MOVE_SET_WALK_MODE);
+        packet.SetOpcode(MSG_MOVE_SET_WALK_MODE);
         movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_WALKING;
     }
     else {
-        packet->SetOpcode(MSG_MOVE_SET_RUN_MODE);
+        packet.SetOpcode(MSG_MOVE_SET_RUN_MODE);
         movementFlags = self->GetUnitMovementFlags() & ~MOVEMENTFLAG_WALKING; //If we were already walking, remove the flag
     }
 
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StartWalkingForward()
 {
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_START_FORWARD);
+    auto packet = WorldPacket(MSG_MOVE_START_FORWARD); 
 
     Player *self = m_session->GetPlayer();
     uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_FORWARD;
@@ -206,13 +204,12 @@ void PlayerBot::StartWalkingForward()
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StartWalkingBackward()
 {
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_START_BACKWARD);
+    auto packet = WorldPacket(MSG_MOVE_START_BACKWARD); 
 
     Player *self = m_session->GetPlayer();
     uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_BACKWARD;
@@ -220,19 +217,18 @@ void PlayerBot::StartWalkingBackward()
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::SendMovementHeartbeat()
 {
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_HEARTBEAT);
+    auto packet = WorldPacket(MSG_MOVE_HEARTBEAT); 
 
     Player *self = m_session->GetPlayer();
     BuildMovementPacket(packet, self->GetUnitMovementFlags());
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StopWalkingStraight()
@@ -245,21 +241,19 @@ void PlayerBot::StopWalkingStraight()
         return;
     }
 
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_STOP);
+    auto packet = WorldPacket(MSG_MOVE_STOP); 
 
     movementFlags = movementFlags & ~(MOVEMENTFLAG_FORWARD | MOVEMENTFLAG_BACKWARD); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StartStrafingLeft()
 {
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_START_STRAFE_LEFT);
+    auto packet = WorldPacket(MSG_MOVE_START_STRAFE_LEFT); 
 
     Player *self = m_session->GetPlayer();
     uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_STRAFE_LEFT;
@@ -267,13 +261,12 @@ void PlayerBot::StartStrafingLeft()
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StartStrafingRight()
 {
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_START_STRAFE_RIGHT);
+    auto packet = WorldPacket(MSG_MOVE_START_STRAFE_RIGHT); 
 
     Player *self = m_session->GetPlayer();
     uint32 movementFlags = self->GetUnitMovementFlags() | MOVEMENTFLAG_STRAFE_RIGHT;
@@ -281,7 +274,7 @@ void PlayerBot::StartStrafingRight()
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StopStrafing()
@@ -293,21 +286,19 @@ void PlayerBot::StopStrafing()
         return;
     }
 
-    WorldPacket *packet = new WorldPacket(); 
-    packet->SetOpcode(MSG_MOVE_STOP_STRAFE);
+    auto packet = WorldPacket(MSG_MOVE_STOP_STRAFE); 
 
     movementFlags = movementFlags & ~(MOVEMENTFLAG_STRAFE_LEFT | MOVEMENTFLAG_STRAFE_RIGHT); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StartTurningLeft()
 {
-    WorldPacket *packet = new WorldPacket();
-    packet->SetOpcode(MSG_MOVE_START_TURN_LEFT);
+    auto packet = WorldPacket(MSG_MOVE_START_TURN_LEFT);
 
     Player *self = m_session->GetPlayer();
 
@@ -317,13 +308,12 @@ void PlayerBot::StartTurningLeft()
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StartTurningRight()
 {
-    WorldPacket *packet = new WorldPacket();
-    packet->SetOpcode(MSG_MOVE_START_TURN_RIGHT);
+    auto packet = WorldPacket(MSG_MOVE_START_TURN_RIGHT);
 
     Player *self = m_session->GetPlayer();
 
@@ -333,7 +323,7 @@ void PlayerBot::StartTurningRight()
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
 }
 
 void PlayerBot::StopTurning()
@@ -345,15 +335,19 @@ void PlayerBot::StopTurning()
         return;
     }
 
-    WorldPacket *packet = new WorldPacket();
-    packet->SetOpcode(MSG_MOVE_STOP_TURN);
+    auto packet = WorldPacket(MSG_MOVE_STOP_TURN);
 
     movementFlags = movementFlags & ~(MOVEMENTFLAG_LEFT | MOVEMENTFLAG_RIGHT); //Remove these flags from movementFlags
 
     BuildMovementPacket(packet, movementFlags);
 
     m_lastPositionUpdate = getMSTime();
-    m_session->HandleMovementOpcodes(*packet);
+    m_session->HandleMovementOpcodes(packet);
+}
+
+void PlayerBot::Jump()
+{
+
 }
 
 void PlayerBot::StopAllWalking()

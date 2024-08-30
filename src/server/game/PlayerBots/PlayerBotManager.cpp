@@ -109,6 +109,8 @@ void PlayerBotManager::HandleChatPacket(WorldPacket *packet, uint64 botGuid)
 
     if (chatType == CHAT_MSG_ACHIEVEMENT || chatType == CHAT_MSG_GUILD_ACHIEVEMENT) {
         *packet >> achievementId;
+    } else {
+        achievementId = 0;
     }
 
     PlayerBot *bot = m_botMap[botGuid];

@@ -65,6 +65,7 @@ public:
     void SendMovementHeartbeat(); //If the bot is moving and hasn't changed direction in the last second, it needs to broadcast a heartbeat packet
     void RPWalk(bool rpWalk);
     void StopAllWalking();
+    void Jump();
 
     void TeleportToUnit(const Unit *unit);
     void SendActiveMoverPacket();
@@ -109,7 +110,7 @@ private:
     float GetMinFollowDistance();
     float GetEffectiveOrientation();
     Position* CalculatePosition(float newOrientation = NAN);
-    void BuildMovementPacket(WorldPacket* packet, uint32 MovementFlags, float orientation = NAN);
+    void BuildMovementPacket(WorldPacket& packet, uint32 MovementFlags, float orientation = NAN);
 
     bool UpdatePointWalk();
     void UpdatePatrol();

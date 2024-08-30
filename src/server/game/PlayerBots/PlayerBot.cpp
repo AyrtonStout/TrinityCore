@@ -170,6 +170,9 @@ void PlayerBot::HandleChat(ChatMsg chatType, Language language, uint64 senderGui
     else if (message == "stop") {
         StopAttack();
     }
+    else if (message == "jump") {
+        
+    }
     else if (message == "draw") {
         SetWeaponSheath(SHEATH_STATE_MELEE);
     }
