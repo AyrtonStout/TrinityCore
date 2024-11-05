@@ -124,7 +124,7 @@ Position* PlayerBot::CalculatePosition(float newOrientation /* NAN */)
     float currentZ = std::max(self->GetPositionZ(), map->GetGridHeight(newX, newY));
     float newZ = map->GetHeight(newX, newY, currentZ);
 
-    TC_LOG_INFO("server", "speed: %f, turnSpeed: %f, e-Orientation: %f, o-change: %f, dX: %f, dY: %f, newX: %f, newY: %f, newZ: %f",
+    TC_LOG_INFO("server", "speed: {}, turnSpeed: {}, e-Orientation: {}, o-change: {}, dX: {}, dY: {}, newX: {}, newY: {}, newZ: {}",
         moveSpeed, turnSpeed, effectiveOrientation, orientationChange, deltaX, deltaY, newX, newY, newZ);
     return new Position(newX, newY, newZ, newOrientation);
 }
